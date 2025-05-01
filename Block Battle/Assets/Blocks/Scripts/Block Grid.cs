@@ -16,15 +16,15 @@ public class BlockGrid : MonoBehaviour
 
     public Vector2 scale = new Vector2(0,0);
 
-    public GameObject[,] blocksInGrid = new GameObject[20,10]; // Initialize array of gameObjects (cubes) representning the filled array
+    private GameObject[,] blocksInGrid = new GameObject[20,10]; // Initialize array of gameObjects (cubes) representning the filled array
 
     private void Awake()
     {
         // Initialize the inner array to avoid null reference issues
-        initializeGrid();
+        InitializeGrid();
     }
 
-    private void initializeGrid()
+    private void InitializeGrid()
     {
         // Get the bounds of the gameObject and find height and width
         SpriteRenderer gridRenderer = gameObject.GetComponent<SpriteRenderer>();
@@ -33,7 +33,6 @@ public class BlockGrid : MonoBehaviour
 
         double width = gridBounds.size.x / 10;
         double height = gridBounds.size.y / 20;
-        //Debug.Log($"Width: {width}, Height: {height}");
         // These values should match but do not due to Unity
 
         // Initialize private widh and height (We do this in case we use a custom grid rather than the default 20x10 one)
@@ -41,11 +40,6 @@ public class BlockGrid : MonoBehaviour
         _height = height;
 
         scale = gameObject.transform.localScale;
-        //Debug.Log($"x: {scale.x} y: {scale.y} !");
-
-        //Transform transformBlock = FindFirstObjectByType<Block>().gameObject.transform;
-        //transformBlock.position = new Vector3(_position.x, _position.y,gameObject.transform.position.z);
-        //Debug.Log($"x: {transformBlock.position.x} y: {transformBlock.position.y} !");
     }
 
     // Prints grid represented with 0s and 1s
@@ -60,23 +54,33 @@ public class BlockGrid : MonoBehaviour
         }
         Debug.Log(str);
     }
-
+        
     // Public Methods
     // Returns (bottom left) position in grid based on the row and column
     // Rows count up from 0 to 19, Columns left to right from 0 to 9
-    public static Vector3 GetPosInGrid(BlockGrid grid, int row, int col) // May deprecate
+    public Vector3 GetPosInGrid(int row, int col) // May deprecate
     {
-        return new Vector3((float)(grid._position.x + grid._width * col), (float)(grid._position.y + grid._height * row), 0);
+        return new Vector3((float)(_position.x + _width * col), (float)(_position.y + _height * row), 0);
     }
 
-    // This method doesn't actuallty place the GameObject in grid but rather
-    //  returns position like GetPosInGrid() and updates the gameObject array
-    public static Vector3 PlaceObjectInGrid(BlockGrid grid, GameObject block, int row, int col) {
-        Vector3 returnVector = new Vector3((float)(grid._position.x + grid._width * col), (float)(grid._position.y + grid._height * row), 0);
-        row = 19 - row;
-        grid.blocksInGrid[row, col] = block;
-        return returnVector;
+    // More Public Methods, used to be in block class
+    // Method to change the grid array
+    public void SetBlockInGridArray(GameObject block, int x, int y)
+    {
+        blocksInGrid[x, y] = block;
     }
 
+    // Method to check if space is avaiable based on offset
+    public bool CheckSpace(int x, int y)
+    {
+        if (x < 0 || y < 0) return false;
+
+        GameObject objectAtLocation = blocksInGrid[_rows - 1 - x, y];
+        if (objectAtLocation == null || objectAtLocation.GetComponent<Block>().isActive)
+        {
+            return true;
+        }
+        return false;
+    }
 
 }

@@ -10,15 +10,18 @@ public class Z_Piece : Piece_Script
      * 18, 4
      * 18, 5
      */
+
     private Vector2[] positions = new Vector2[4] {
-        new Vector2(19, 3),
-        new Vector2(19, 0),
-        new Vector2(18, 4),
-        new Vector2(18, 5)
+        new Vector2(0, 3),
+        new Vector2(0, 4),
+        new Vector2(1, 4),
+        new Vector2(1, 5)
     };
 
-    private void Start()
+    protected override void Start()
     {
-        SpawnBlocks(positions);
+        base.Start();  // Call parent Start
+        SetPositions(positions);
+        SpawnBlocks(_positions);
     }
 }

@@ -7,40 +7,41 @@ public class Block : MonoBehaviour
 
     public bool isActive;
 
-    public void setPos(int x, int y)
+    [SerializeField] protected GameObject _grid;
+    protected BlockGrid _blockGrid;
+
+    private void Awake()
+    {
+        _blockGrid = _grid.GetComponent<BlockGrid>();
+    }
+
+    public void SetPos(int x, int y)
     {
         _posx = x;
         _posy = y;
     }
 
-    public void initializePosition(BlockGrid grid, int x, int y)
+    public void InitializePosition(int x, int y)
     {
-        grid.blocksInGrid[19 - _posx, _posy] = gameObject;
-        setPos(x, y);
+        _blockGrid.SetBlockInGridArray(gameObject, x, y);
+        SetPos(x, y);
+        gameObject.transform.position = _blockGrid.GetPosInGrid(x, y);
     }
 
     // Method to update the position and also update the blockgrid aswell
-    public void updatePosition(BlockGrid grid, int x, int y)
+    public void UpdatePosition(int x, int y)
     {
-        grid.blocksInGrid[19 - _posx, _posy] = null;
-        setPos(x, y);
-        grid.blocksInGrid[19 - _posx, _posy] = gameObject;
+        _blockGrid.SetBlockInGridArray(null, x, y);
+        gameObject.transform.position = _blockGrid.GetPosInGrid(x, y);
+        SetPos(x, y);
+        _blockGrid.SetBlockInGridArray(gameObject, x, y);
     }
 
     // Method to offset the position and also update the blockgrid aswell, assumes checkSpace already called
-    public void offsetPosition(BlockGrid grid, int offSetX, int offSetY)
+    public void MoveByOffset(int offSetX, int offSetY)
     {
-        updatePosition(grid, _posx + offSetX, _posy + offSetY);
+        UpdatePosition(_posx + offSetX, _posy + offSetY);
     }
 
-    // Method to check if space is avaiable based on offset
-    public bool checkSpace(BlockGrid grid, int offSetX, int offSetY)
-    {
-        GameObject objectAtLocation = grid.blocksInGrid[_posx + offSetX, _posy + offSetY];
-        if (objectAtLocation == null || objectAtLocation.GetComponent<Block>().isActive)
-        {
-            return true;
-        }
-        return false;
-    }
+    
 }
