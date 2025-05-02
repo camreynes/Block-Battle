@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class TPiece : Piece_Script
+public class TPiece : PieceScript
 {
     private Vector2[] positions = new Vector2[4] {
         new Vector2(0, 4),

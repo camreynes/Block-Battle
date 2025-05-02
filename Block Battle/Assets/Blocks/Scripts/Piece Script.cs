@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Piece_Script : MonoBehaviour
+public class PieceScript : MonoBehaviour
 {
     [SerializeField] protected GameObject _blockPrefab;
 
@@ -41,11 +41,6 @@ public class Piece_Script : MonoBehaviour
             _blocks[i] = block;
             _blocks[i].GetComponent<Block>().InitializePosition((int)vectors[i].x, (int)vectors[i].y);
         }
-
-        for (int i = 0; i < _blocks.Length; i++)
-        {
-            Debug.Log($"_blocks[{i}] = {_blocks[i]}");
-        }
     }
 
     public bool CheckBlockLocations(Vector2[] positions)
@@ -75,11 +70,11 @@ public class Piece_Script : MonoBehaviour
     {
         for (int i = 0; i < _blocks.Length; i++)
         {
-            Debug.Log(i);
-            if (_blocks[i] == null)
-                Debug.Log("is null");
-            else
-                Debug.Log($"Setting block at {_blocks[i].GetComponent<Block>().GetPosition()} to inactive");
+            //Debug.Log(i);
+            //if (_blocks[i] == null)
+            //    Debug.Log("is null");
+            //else
+            //    Debug.Log($"Setting block at {_blocks[i].GetComponent<Block>().GetPosition()} to inactive");
             _blocks[i].GetComponent<Block>().SetBlockStatus(false);
         }
     }

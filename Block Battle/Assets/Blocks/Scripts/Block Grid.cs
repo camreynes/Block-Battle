@@ -92,7 +92,7 @@ public class BlockGrid : MonoBehaviour
         // Check if coordinates are out of bounds
         if (x is < 0 or > 19 || y is < 0 or > 9)
         { // Check if the coordinates are out of bounds}
-            Debug.Log($"Coordinates {x}, {y} are out of bounds");
+            //Debug.Log($"Coordinates {x}, {y} are out of bounds");
             return false;
         }
 
@@ -100,11 +100,11 @@ public class BlockGrid : MonoBehaviour
         bool isValid = blocksInGrid[x, y] == null || blocksInGrid[x, y].GetComponent<Block>().GetBlockStatus();
         if (isValid)
         {
-            Debug.Log($"Coordinates {x}, {y} are valid");
+            //Debug.Log($"Coordinates {x}, {y} are valid");
         }
         else
         {
-            Debug.Log($"Coordinates {x}, {y} are not valid {blocksInGrid[x, y].GetComponent<Block>().GetBlockStatus()}");
+            //Debug.Log($"Coordinates {x}, {y} are not valid {blocksInGrid[x, y].GetComponent<Block>().GetBlockStatus()}");
         }
         return isValid;
     }

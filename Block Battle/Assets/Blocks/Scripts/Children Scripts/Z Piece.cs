@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Z_Piece : Piece_Script
+public class ZPiece : PieceScript
 {
     private Vector2[] positions = new Vector2[4] {
         new Vector2(0, 3),

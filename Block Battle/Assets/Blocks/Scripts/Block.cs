@@ -28,7 +28,7 @@ public class Block : MonoBehaviour
     {
         gameObject.transform.position = _blockGrid.GetPosInGrid(x, y);
         SetPos(x, y);
-        Debug.Log($"Block position changed to: {x}, {y}");
+        //Debug.Log($"Block position changed to: {x}, {y}");
     }
 
     public bool GetBlockStatus()
