@@ -48,7 +48,22 @@ public class BlockGrid : MonoBehaviour
         for (int r = 0; r < grid._rows; r++) {
             for (int c = 0; c < grid._cols; c++)
             {
-                str += (grid.blocksInGrid[r, c] == null) ? "_" : "X";
+                GameObject block = grid.blocksInGrid[r, c];
+                if (block != null)
+                {
+                    if (block.GetComponent<Block>().GetBlockStatus())
+                    {
+                        str += "1";
+                    }
+                    else
+                    {
+                        str += "0";
+                    }
+                }
+                else
+                {
+                    str += "_";
+                }
             }
             str += "\n";
         }
@@ -58,9 +73,10 @@ public class BlockGrid : MonoBehaviour
     // Public Methods
     // Returns (bottom left) position in grid based on the row and column
     // Rows count up from 0 to 19, Columns left to right from 0 to 9
-    public Vector3 GetPosInGrid(int row, int col) // May deprecate
+    public Vector3 GetPosInGrid(int row, int col)
     {
-        return new Vector3((float)(_position.x + _width * col), (float)(_position.y + _height * row), 0);
+        //Debug.Log($"Getting position in grid at {row}, {col}");
+        return new Vector3((float)(_position.x + _width * col), (float)(_position.y - _height * row), 0);
     }
 
     // More Public Methods, used to be in block class
@@ -70,17 +86,27 @@ public class BlockGrid : MonoBehaviour
         blocksInGrid[x, y] = block;
     }
 
-    // Method to check if space is avaiable based on offset
+    // Method to check if space is avaiable based on offset, long method for debug atm
     public bool CheckSpace(int x, int y)
     {
-        if (x < 0 || y < 0) return false;
-
-        GameObject objectAtLocation = blocksInGrid[_rows - 1 - x, y];
-        if (objectAtLocation == null || objectAtLocation.GetComponent<Block>().isActive)
-        {
-            return true;
+        // Check if coordinates are out of bounds
+        if (x is < 0 or > 19 || y is < 0 or > 9)
+        { // Check if the coordinates are out of bounds}
+            Debug.Log($"Coordinates {x}, {y} are out of bounds");
+            return false;
         }
-        return false;
+
+        // Return true if the space is empty or the block is active
+        bool isValid = blocksInGrid[x, y] == null || blocksInGrid[x, y].GetComponent<Block>().GetBlockStatus();
+        if (isValid)
+        {
+            Debug.Log($"Coordinates {x}, {y} are valid");
+        }
+        else
+        {
+            Debug.Log($"Coordinates {x}, {y} are not valid {blocksInGrid[x, y].GetComponent<Block>().GetBlockStatus()}");
+        }
+        return isValid;
     }
 
 }
