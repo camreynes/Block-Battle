@@ -13,6 +13,7 @@ public class BlockGrid : MonoBehaviour
     private Vector2 _position = new Vector2(-2.24740648269653f, -4.47401666641235f); //represents bottom left position of the grid
     private int _rows = 20;
     private int _cols = 10;
+    private int _playerID;
 
     public Vector2 scale = new Vector2(0,0);
 

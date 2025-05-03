@@ -22,7 +22,7 @@ public class PieceScript : MonoBehaviour
         /**  
          * Get the number of blocks from the amount of positions passed  
          * Initialize objects  
-         * Attempt to Spawn them  
+         * Spawn them  
          */
         int numBlocks = vectors.Length;
         _blocks = new GameObject[numBlocks];

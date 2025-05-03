@@ -13,11 +13,10 @@ public class PieceController : MonoBehaviour
 
     private float _timeToFall = 0.8f;
     private PieceScript _currentPiece;
-    private PlayerInput _input;
+    private int playerId = 0; // Player ID for input mapping, will make dynamic later
 
     public Vector2[] _positions;
 
-    private Dictionary<string, Vector2> _keyToDirection = new Dictionary<string, Vector2>();
     private HoldState _holdLeft;
     private HoldState _holdRight;
     private HoldState _holdDown;
@@ -30,103 +29,12 @@ public class PieceController : MonoBehaviour
         _holdLeft = new HoldState(0.167f, 0.033f);
         _holdRight = new HoldState(0.167f, 0.033f);
         _holdDown = new HoldState(0.05f, 0.02f);
-
-        // Create a new PlayerInput object and enable the Player1Gameplay action map, scaling for later players
-        _input = new PlayerInput();
-        _input.Player1Gameplay.Enable();
-        InitializeKeyDirectionMap(_input.Player1Gameplay.Move);
-
-        // Add listeners to the hold states
-        _input.Player1Gameplay.Move.started += OnMoveStart;
-        _input.Player1Gameplay.Move.canceled += OnMoveEnd;
-        _input.Player1Gameplay.SoftDrop.started += OnMoveStart;
-        _input.Player1Gameplay.SoftDrop.canceled += OnMoveEnd;
-
-        // Add liseners to the move action
-        _input.Player1Gameplay.Move.performed += ApplyMove; // append function, (on finish returns context to onMove)
     }
-
-
-    // Function to initialize the key to direction map, helpful to dynamically convery Unity bindings to directions
-    // Unforunately, we need this method because Unity does not provide a way to get the key binding from the InputAction
-    private Dictionary<string, Vector2> InitializeKeyDirectionMap(InputAction inputActions)
-    {
-        foreach (var binding in inputActions.bindings)
-        {
-            // Only care about part of 2D composite bindings, i.e. no duplicates
-            if (!binding.isPartOfComposite) continue;
-
-            Vector2 dir = Vector2.zero;
-            switch (binding.name)
-            {
-                case "up": dir = Vector2.up; break;
-                case "down": dir = Vector2.down; break;
-                case "left": dir = Vector2.left; break;
-                case "right": dir = Vector2.right; break;
-            }
-
-            // Add all control paths mapped to that direction
-            if (dir != Vector2.zero)
-            {
-                var cleanPath = binding.path.Replace("<", "").Replace(">", "");
-                _keyToDirection[$"/{cleanPath}"] = dir;
-                Debug.Log($"Binding: /{cleanPath} -> Direction: {dir}");
-            }
-        }
-
-        return null;
-    }
-
-    // Function to set hold states true, appended to move start
-    private void OnMoveStart(InputAction.CallbackContext context)
-    {
-        Vector2 direction = context.ReadValue<Vector2>();
-        Debug.Log($"Move started: {direction}");
-
-        if (direction.x < 0)
-            _holdLeft.StartHold();
-        else if (direction.x > 0)
-            _holdRight.StartHold();
-
-
-        else if (direction.y < 0)
-            _holdDown.StartHold();
-    }
-
-    // Function to set hold states false, appended to move end
-    private void OnMoveEnd(InputAction.CallbackContext context)
-    {
-
-        Vector2 direction = _keyToDirection[context.control.path];
-
-        Debug.Log($"Move ended: {direction} and {context.control.path}");
-
-        if (direction.x != 0)
-        {
-            _holdLeft.StopHold();
-            _holdRight.StopHold();
-        }
-        else if (direction.y != 0)
-        {
-            _holdDown.StopHold();
-        }
-
-    }
-
-    // Function appended to the MOVE section of player input (only left right soft down)
-    private void ApplyMove(InputAction.CallbackContext context)
-    {
-        Vector2 direction = context.ReadValue<Vector2>();
-
-        if (direction.x < 0) TryMovePiece(new Vector2(0,-1));
-        else if (direction.x > 0) TryMovePiece(new Vector2(0, 1));
-        else if (direction.y < 0) TryMovePiece(new Vector2(1, 0));
-    }
-
 
     // We use update to check for held keys
     private void Update()
     {
+        // HOLDING ACCELERATED MOVEMENT
         bool leftHeld = _holdLeft.IsHolding;
         bool rightHeld = _holdRight.IsHolding;
         bool downHeld = _holdDown.IsHolding;
@@ -135,9 +43,50 @@ public class PieceController : MonoBehaviour
             TryMovePiece(new Vector2(0, -1));
         else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
             TryMovePiece(new Vector2(0, 1));
-
         if (downHeld && _holdDown.ShouldRepeat())
             TryMovePiece(new Vector2(1, 0));
+
+        // PLAYER INPUTS
+        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, playerId))
+            OnMoveStart(new Vector2(0,-1));
+        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, playerId).WasReleasedThisFrame())
+            OnMoveEnd(new Vector2(0, -1));
+
+        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, playerId))
+            OnMoveStart(new Vector2(0, 1));
+        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, playerId).WasReleasedThisFrame())
+            OnMoveEnd(new Vector2(0, 1));
+
+        if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, playerId))
+            OnMoveStart(new Vector2(1, 0));
+        if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, playerId).WasReleasedThisFrame())
+            OnMoveEnd(new Vector2(1, 0));
+    }
+
+    // Function to set hold states, only needed for keys that can be presse (move left, right and down)
+    private void OnMoveStart(Vector2 direction)
+    {
+        Debug.Log($"Move started: {direction}");
+
+        // Remember x and y are reffered to as poistions in the array, not unity coordinates
+        if (direction.y < 0)
+            _holdLeft.StartHold();
+        else if (direction.y > 0)
+            _holdRight.StartHold();
+        else if (direction.x > 0)
+            _holdDown.StartHold();
+    }
+
+    // Function to set hold states false, appended to move end
+    private void OnMoveEnd(Vector2 direction)
+    {
+        Debug.Log($"Move ended: {direction}");
+        if (direction.y < 0)
+            _holdLeft.StopHold();
+        else if (direction.y > 0)
+            _holdRight.StopHold();
+        else if (direction.x > 0)
+            _holdDown.StopHold();
     }
 
     // This function checks if we can move the piece in the given direction and moves if we can
@@ -160,7 +109,7 @@ public class PieceController : MonoBehaviour
     {
         //Debug.Log("Attempting to spawn Blocks");
         GameObject pieceObj = null;
-        pieceObj = Instantiate(_tetrominoPrefab[1]);
+        pieceObj = Instantiate(_tetrominoPrefab[UnityEngine.Random.Range(0, 2)]);
         _currentPiece = pieceObj.GetComponent<PieceScript>();
 
         _currentPiece.SetGrid(_grid);
