@@ -39,9 +39,9 @@ public class Block : MonoBehaviour
     {
         return isActive;
     }
-    public Vector2 GetPosition()
+    public Vector2Int GetPosition()
     {
-        return new Vector2(_posx, _posy);
+        return new Vector2Int(_posx, _posy);
     }
 
     // Setter Methods
@@ -55,6 +55,4 @@ public class Block : MonoBehaviour
         _grid = grid;
         _blockGrid = _grid.GetComponent<BlockGrid>();
     }
-
-
 }

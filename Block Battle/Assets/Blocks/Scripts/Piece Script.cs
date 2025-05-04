@@ -9,8 +9,10 @@ public class PieceScript : MonoBehaviour
     protected BlockGrid _blockGrid;
     protected GameObject[] _blocks;
 
-    private Vector2[] _positions;
+    private Vector2Int[] _positions;
     private int _currentRotation = 0; // 0 = 0 spawn/0 degrees, 1 = right/90 degrees, 2 = reverse/180 degrees, 3 = left/270 degrees
+
+    public virtual PieceType PieceType { get; }
 
     public void SetGrid(BlockGrid grid)
     {
@@ -20,7 +22,7 @@ public class PieceScript : MonoBehaviour
 
     /// <summary>Instantiates all the game objects to create the child piece (i.e. T, L, etc.)</summary>
     /// <param name="vectors">Vectors is a set of initial positions where the blocks will be spawned</param>
-    public void SpawnBlocks(Vector2[] vectors)
+    public void SpawnBlocks(Vector2Int[] vectors)
     {
         int numBlocks = vectors.Length;
         _blocks = new GameObject[numBlocks];
@@ -45,9 +47,9 @@ public class PieceScript : MonoBehaviour
     /// <summary>Checks if the blocks can be placed in the given positions. This is used to check if the blocks can be moved or rotated.</summary>
     /// <param name="positions">Set of vectors representing positons to be checked</param>
     /// <returns>Return true if valid spots, false otherwise</returns>
-    public bool CheckBlockLocations(Vector2[] positions)
+    public bool CheckBlockLocations(Vector2Int[] positions)
     {
-        foreach (Vector2 position in positions)
+        foreach (Vector2Int position in positions)
         {
             if (_blockGrid.CheckSpace((int)position.x, (int)position.y) == false)
                 return false;
@@ -59,12 +61,12 @@ public class PieceScript : MonoBehaviour
     /// <param name="offsetX">deltaX</param>
     /// <param name="offsetY">deltaY</param>
     /// <returns>Returns the new offseted vectors as an array</returns>
-    public Vector2[] CreateOffsetVectors(int offsetX, int offsetY)
+    public Vector2Int[] CreateOffsetVectors(int offsetX, int offsetY)
     {
-        Vector2[] returnVectors = new Vector2[_positions.Length];
+        Vector2Int[] returnVectors = new Vector2Int[_positions.Length];
         for (int i = 0; i < _positions.Length; i++)
         {
-            returnVectors[i] = new Vector2(_positions[i].x + offsetX, _positions[i].y + offsetY);
+            returnVectors[i] = new Vector2Int(_positions[i].x + offsetX, _positions[i].y + offsetY);
         }
         return returnVectors;
     }
@@ -72,9 +74,9 @@ public class PieceScript : MonoBehaviour
     /// <summary>Attempt to move the piece (in array and unity).</summary>'
     /// <param name="offset">Offset vector to be applied to the piece</param>
     /// <returns>True if the move was successful, false otherwise</returns>
-    public bool TryMovePiece(Vector2 offset)
+    public bool TryMovePiece(Vector2Int offset)
     {
-        Vector2[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y);
+        Vector2Int[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y);
         if (CheckBlockLocations(newPositions))
         {
             OffsetBlocks((int)offset.x, (int)offset.y);
@@ -94,8 +96,8 @@ public class PieceScript : MonoBehaviour
 
     private bool TryRotate(bool clockwise)
     {
-        Vector2[] rotatedOffsets = GetRotatedPositions(_currentRotation, clockwise);
-        Vector2[] rotatedPositions = new Vector2[_blocks.Length];
+        Vector2Int[] rotatedOffsets = GetRotatedPositions(_currentRotation, clockwise);
+        Vector2Int[] rotatedPositions = new Vector2Int[_blocks.Length];
 
         Debug.Log($"Initial Positions: {_positions}");
         Debug.Log($"Rotation Vectors: {rotatedOffsets}");
@@ -132,7 +134,7 @@ public class PieceScript : MonoBehaviour
         return false;
     }
 
-    private void AssignNewLocations(Vector2[] newPositions)
+    private void AssignNewLocations(Vector2Int[] newPositions)
     {
         for (int i = 0; i < _blocks.Length; i++)
         {
@@ -159,7 +161,7 @@ public class PieceScript : MonoBehaviour
     /// <summary>Simple setter method to hardset the positions of the blocks. Doesn't change the block locations in the grid.
     /// Generally only used for initialization of the piece.</summary>
     /// <param name="positions">Initial position vectors</param>
-    public void SetPositions(Vector2[] positions)
+    public void SetPositions(Vector2Int[] positions)
     {
         _positions = positions;
     }
@@ -188,19 +190,19 @@ public class PieceScript : MonoBehaviour
     }
 
     /// <summary>Returns the current positions of the blocks.</summary>
-    public virtual Vector2[] GetPositions()
+    public virtual Vector2Int[] GetPositions()
     {
         return _positions;
     }
 
     /// <summary>Returns the inital position of the piece. Simply overriden in each child piece to define starting locations.</summary>
-    public virtual Vector2[] GetInitialPositions()
+    public virtual Vector2Int[] GetInitialPositions()
     {
-        return new Vector2[0]; // default to empty
+        return new Vector2Int[0]; // default to empty
     }
 
-    protected virtual Vector2[] GetRotatedPositions(int stateFrom, bool isClockwise)
+    protected virtual Vector2Int[] GetRotatedPositions(int stateFrom, bool isClockwise)
     {
-        return new Vector2[0]; // default to empty
+        return new Vector2Int[0]; // default to empty
     }
 }

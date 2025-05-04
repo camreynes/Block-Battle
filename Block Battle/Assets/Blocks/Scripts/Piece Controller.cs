@@ -15,7 +15,7 @@ public class PieceController : MonoBehaviour
     private PieceScript _currentPiece;
     private int playerId = 0; // Player ID for input mapping, will make dynamic later
 
-    public Vector2[] _positions;
+    public Vector2Int[] _positions;
 
     private HoldState _holdLeft;
     private HoldState _holdRight;
@@ -40,27 +40,27 @@ public class PieceController : MonoBehaviour
         bool downHeld = _holdDown.IsHolding;
 
         if (leftHeld && !rightHeld && _holdLeft.ShouldRepeat())
-            TryMovePiece(new Vector2(0, -1));
+            TryMovePiece(new Vector2Int(0, -1));
         else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
-            TryMovePiece(new Vector2(0, 1));
+            TryMovePiece(new Vector2Int(0, 1));
         if (downHeld && _holdDown.ShouldRepeat())
-            TryMovePiece(new Vector2(1, 0));
+            TryMovePiece(new Vector2Int(1, 0));
 
         // PLAYER INPUTS
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, playerId))
-            OnMoveStart(new Vector2(0, -1));
+            OnMoveStart(new Vector2Int(0, -1));
         if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, playerId).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2(0, -1));
+            OnMoveEnd(new Vector2Int(0, -1));
 
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, playerId))
-            OnMoveStart(new Vector2(0, 1));
+            OnMoveStart(new Vector2Int(0, 1));
         if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, playerId).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2(0, 1));
+            OnMoveEnd(new Vector2Int(0, 1));
 
         if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, playerId))
-            OnMoveStart(new Vector2(1, 0));
+            OnMoveStart(new Vector2Int(1, 0));
         if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, playerId).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2(1, 0));
+            OnMoveEnd(new Vector2Int(1, 0));
 
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, playerId))
             _currentPiece.TryRotateCW();
@@ -70,7 +70,7 @@ public class PieceController : MonoBehaviour
     }
 
     // Function to set hold states, only needed for keys that can be presse (move left, right and down)
-    private void OnMoveStart(Vector2 direction)
+    private void OnMoveStart(Vector2Int direction)
     {
         Debug.Log($"Move started: {direction}");
 
@@ -84,7 +84,7 @@ public class PieceController : MonoBehaviour
     }
 
     // Function to set hold states false, appended to move end
-    private void OnMoveEnd(Vector2 direction)
+    private void OnMoveEnd(Vector2Int direction)
     {
         Debug.Log($"Move ended: {direction}");
         if (direction.y < 0)
@@ -96,9 +96,9 @@ public class PieceController : MonoBehaviour
     }
 
     // This function checks if we can move the piece in the given direction and moves if we can
-    private void TryMovePiece(Vector2 direction)
+    private void TryMovePiece(Vector2Int direction)
     {
-        Vector2[] newPositions = _currentPiece.CreateOffsetVectors((int)direction.x, (int)direction.y);
+        Vector2Int[] newPositions = _currentPiece.CreateOffsetVectors((int)direction.x, (int)direction.y);
 
         if (_currentPiece.CheckBlockLocations(newPositions))
             _currentPiece.OffsetBlocks((int)direction.x, (int)direction.y);
@@ -120,7 +120,7 @@ public class PieceController : MonoBehaviour
 
         _currentPiece.SetGrid(_grid);
 
-        Vector2[] _initialPositions = _currentPiece.GetInitialPositions();
+        Vector2Int[] _initialPositions = _currentPiece.GetInitialPositions();
         _positions = _initialPositions;
         Debug.Log($"Initial positions from PieceController:");
         PrintVector2Array(_initialPositions);
@@ -159,7 +159,7 @@ public class PieceController : MonoBehaviour
             }
 
             // Create offset vectors (-1 y) and check if we can place there
-            bool canPlace = _currentPiece.TryMovePiece(new Vector2(1,0));
+            bool canPlace = _currentPiece.TryMovePiece(new Vector2Int(1,0));
 
             if (!canPlace)
             {
@@ -182,7 +182,7 @@ public class PieceController : MonoBehaviour
         _grid = grid;
     }
 
-    public static void PrintVector2Array(Vector2[] vectors, string label = "Vector2 Array")
+    public static void PrintVector2Array(Vector2Int[] vectors, string label = "Vector2 Array")
     {
         string result = label + ": [ ";
         foreach (Vector2 v in vectors)
