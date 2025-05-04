@@ -10,17 +10,23 @@ public class PieceController : MonoBehaviour
 {
     [SerializeField] private GameObject[] _tetrominoPrefab = new GameObject[2];
     [SerializeField] protected BlockGrid _grid;
-    private float _timeToFall = 2f;
+    private float _timeToFall = .8f;
+    private float _lockDelay = .5f;
+    private float _maxLockDelay = 1.5f;
 
     private PieceScript _currentPiece;
-    private int playerId = 0; // Player ID for input mapping, will make dynamic later
+    private int _playerId = 0; // Player ID for input mapping, will make dynamic later
 
-    public Vector2Int[] _positions;
+    public Vector2Int[] _initialPositions;
 
     private HoldState _holdLeft;
     private HoldState _holdRight;
     private HoldState _holdDown;
 
+    private bool _recentlyMoved = false;
+    private bool _forceHardDrop = false;
+
+    private Coroutine _fallRoutine;
 
     // On Awake(), we define player inputs
     private void Awake()
@@ -34,45 +40,51 @@ public class PieceController : MonoBehaviour
     // We use update to check for held keys
     private void Update()
     {
+        //if (_recentlyMoved)
+        //    Debug.Log("Moved");
         // HOLDING ACCELERATED MOVEMENT
+        _recentlyMoved = false;
         bool leftHeld = _holdLeft.IsHolding;
         bool rightHeld = _holdRight.IsHolding;
         bool downHeld = _holdDown.IsHolding;
 
         if (leftHeld && !rightHeld && _holdLeft.ShouldRepeat())
-            TryMovePiece(new Vector2Int(0, -1));
+            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(0, -1));
         else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
-            TryMovePiece(new Vector2Int(0, 1));
+            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(0, 1));
         if (downHeld && _holdDown.ShouldRepeat())
-            TryMovePiece(new Vector2Int(1, 0));
+            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(1, 0));
 
-        // PLAYER INPUTS
-        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, playerId))
+        // PLAYER INPUTS - MOVEMENT
+        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, _playerId))
             OnMoveStart(new Vector2Int(0, -1));
-        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, playerId).WasReleasedThisFrame())
+        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerId).WasReleasedThisFrame())
             OnMoveEnd(new Vector2Int(0, -1));
 
-        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerId))
             OnMoveStart(new Vector2Int(0, 1));
-        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, playerId).WasReleasedThisFrame())
+        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, _playerId).WasReleasedThisFrame())
             OnMoveEnd(new Vector2Int(0, 1));
 
-        if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, _playerId))
             OnMoveStart(new Vector2Int(1, 0));
-        if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, playerId).WasReleasedThisFrame())
+        if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, _playerId).WasReleasedThisFrame())
             OnMoveEnd(new Vector2Int(1, 0));
 
-        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, playerId))
-            _currentPiece.TryRotateCW();
-        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, playerId))
-            _currentPiece.TryRotateCCW();
+        if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerId))
+            HardDrop();
 
+            // PLAYER INPUTS - ROTATIONS
+        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, _playerId))
+            _recentlyMoved = _currentPiece.TryRotateCW();
+        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerId))
+            _recentlyMoved = _currentPiece.TryRotateCCW();
     }
 
     // Function to set hold states, only needed for keys that can be presse (move left, right and down)
     private void OnMoveStart(Vector2Int direction)
     {
-        Debug.Log($"Move started: {direction}");
+        //Debug.Log($"Move started: {direction}");
 
         // Remember x and y are reffered to as poistions in the array, not unity coordinates
         if (direction.y < 0)
@@ -81,12 +93,13 @@ public class PieceController : MonoBehaviour
             _holdRight.StartHold();
         else if (direction.x > 0)
             _holdDown.StartHold();
+        _recentlyMoved = true;
     }
 
     // Function to set hold states false, appended to move end
     private void OnMoveEnd(Vector2Int direction)
     {
-        Debug.Log($"Move ended: {direction}");
+        //Debug.Log($"Move ended: {direction}");
         if (direction.y < 0)
             _holdLeft.StopHold();
         else if (direction.y > 0)
@@ -95,24 +108,17 @@ public class PieceController : MonoBehaviour
             _holdDown.StopHold();
     }
 
-    // This function checks if we can move the piece in the given direction and moves if we can
-    private void TryMovePiece(Vector2Int direction)
-    {
-        Vector2Int[] newPositions = _currentPiece.CreateOffsetVectors((int)direction.x, (int)direction.y);
-
-        if (_currentPiece.CheckBlockLocations(newPositions))
-            _currentPiece.OffsetBlocks((int)direction.x, (int)direction.y);
-    }
-
     // Once inputs defined, we can start spawning pieces at an interval
     void Start()
     {
         SpawnPiece();
-        StartCoroutine(DelayedStart());
+        _fallRoutine = StartCoroutine(BlockFall());
     }
 
     private void SpawnPiece()
     {
+        _forceHardDrop = false;
+
         //Debug.Log("Attempting to spawn Blocks");
         GameObject pieceObj = null;
         pieceObj = Instantiate(_tetrominoPrefab[UnityEngine.Random.Range(1, 2)]);
@@ -121,13 +127,13 @@ public class PieceController : MonoBehaviour
         _currentPiece.SetGrid(_grid);
 
         Vector2Int[] _initialPositions = _currentPiece.GetInitialPositions();
-        _positions = _initialPositions;
-        Debug.Log($"Initial positions from PieceController:");
-        PrintVector2Array(_initialPositions);
+        this._initialPositions = _initialPositions;
+        //Debug.Log($"Initial positions from PieceController:");
+        //PrintVector2Array(_initialPositions);
 
         _currentPiece.SetPositions(_initialPositions);
 
-        bool canSpawn = _currentPiece.CheckBlockLocations(_positions);
+        bool canSpawn = _currentPiece.CheckBlockLocations(this._initialPositions);
         if (!canSpawn)
         {
             //Debug.Log("Can not spawn block");
@@ -140,40 +146,72 @@ public class PieceController : MonoBehaviour
         _currentPiece.SpawnBlocks(_initialPositions);
     }
 
-    // Delay before the first block falls
-    private IEnumerator DelayedStart()
+    private void HardDrop()
     {
-        yield return new WaitForSeconds(_timeToFall);
-        StartCoroutine(BlockFall());         
+        _forceHardDrop = true;
+        _currentPiece?.HardDrop();
+        _currentPiece?.SetBlocksInactive();
+        _currentPiece = null;
     }
 
-    // Update is called once per frame
     private IEnumerator BlockFall()
     {
         while (true)
         {
             if (_currentPiece == null)
             {
+                SpawnPiece();
                 yield return null; // wait one frame to ensure full setup
                 continue;
             }
 
-            // Create offset vectors (-1 y) and check if we can place there
-            bool canPlace = _currentPiece.TryMovePiece(new Vector2Int(1,0));
+            bool canMoveDown = _currentPiece.TestOffset(new Vector2Int(1,0)); // Can we place below?
+            float timer = 0;
 
-            if (!canPlace)
+            if (canMoveDown) // Normal falling, using a timer here instead of waitForSeconds so it can be interrupted
             {
-                // If we can't place the blocks, we need to spawn a new piece
-                _currentPiece.SetBlocksInactive();
-                _currentPiece = null;
+                while (timer < _timeToFall && !_forceHardDrop)
+                {
+                    timer += Time.deltaTime;
+                    yield return null;
+                }
+
+                if (!_forceHardDrop)
+                    _currentPiece.TryMovePiece(new Vector2Int(1, 0));
             }
 
-            if (_currentPiece == null)
+            else // Lock Delay
             {
-                SpawnPiece();
+                
+                float lastLockDelay = 0; // add the differencv between the last lock delay and the current one
+                float currentMaxtime = Math.Min(_timeToFall, _lockDelay);
+                bool newMovePossible = false;
+
+                while (timer < currentMaxtime && !_forceHardDrop)
+                {
+                    Debug.Log(timer);
+                    if (_recentlyMoved && !newMovePossible)
+                    {
+                        newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(1, 0));
+                        currentMaxtime = Math.Min(currentMaxtime + _lockDelay - lastLockDelay, _maxLockDelay);
+                        lastLockDelay = .5f;
+                    }
+                    timer += Time.deltaTime;
+                    lastLockDelay = Math.Max(0f, lastLockDelay - Time.deltaTime);
+                    yield return null;
+                }
+                if (canMoveDown)
+                {
+                    _currentPiece.TryMovePiece(new Vector2Int(1,0));
+                }
+                else
+                {
+                    _currentPiece?.SetBlocksInactive();
+                    _currentPiece = null;
+                }
+                
             }
 
-            yield return new WaitForSeconds(_timeToFall); // fall every second
         }
     }
 

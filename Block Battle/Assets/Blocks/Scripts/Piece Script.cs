@@ -31,7 +31,7 @@ public class PieceScript : MonoBehaviour
         // Iterate through each block, instantiating it, asigning a parent, making it active, initalizing it in array, and initalizing position
         for (int i = 0; i < numBlocks; i++)
         {
-            Debug.Log($"Spawning block {i} at {vectors[i]}");
+            //Debug.Log($"Spawning block {i} at {vectors[i]}");
             GameObject block = Instantiate(_blockPrefab);
             Block blockScript = block.GetComponent<Block>();
             blockScript.SetGrid(_blockGrid.gameObject);
@@ -40,7 +40,7 @@ public class PieceScript : MonoBehaviour
             blockScript.SetBlockStatus(true);
             block.transform.parent = transform;
             _blocks[i] = block;
-            _blocks[i].GetComponent<Block>().InitializePosition((int)vectors[i].x, (int)vectors[i].y,i);
+            _blocks[i].GetComponent<Block>().InitializePosition((int)vectors[i].x, (int)vectors[i].y, i);
         }
     }
 
@@ -71,6 +71,14 @@ public class PieceScript : MonoBehaviour
         return returnVectors;
     }
 
+    public void HardDrop()
+    {
+        while (true)
+        {
+            if (!TryMovePiece(new Vector2Int(1, 0))) break;
+        }
+    }
+
     /// <summary>Attempt to move the piece (in array and unity).</summary>'
     /// <param name="offset">Offset vector to be applied to the piece</param>
     /// <returns>True if the move was successful, false otherwise</returns>
@@ -80,6 +88,17 @@ public class PieceScript : MonoBehaviour
         if (CheckBlockLocations(newPositions))
         {
             OffsetBlocks((int)offset.x, (int)offset.y);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>Test if the piece can be moved to the new position without actually moving it.</summary>
+    public bool TestOffset(Vector2Int offset)
+    {
+        Vector2Int[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y);
+        if (CheckBlockLocations(newPositions))
+        {
             return true;
         }
         return false;
@@ -99,8 +118,8 @@ public class PieceScript : MonoBehaviour
         Vector2Int[] rotatedOffsets = GetRotatedPositions(_currentRotation, clockwise);
         Vector2Int[] rotatedPositions = new Vector2Int[_blocks.Length];
 
-        Debug.Log($"Initial Positions: {_positions}");
-        Debug.Log($"Rotation Vectors: {rotatedOffsets}");
+        //Debug.Log($"Initial Positions: {_positions}");
+        //Debug.Log($"Rotation Vectors: {rotatedOffsets}");
         for (int i = 0; i < _blocks.Length; i++)
         {
             if (clockwise)
@@ -112,7 +131,7 @@ public class PieceScript : MonoBehaviour
             }
            
         }
-        Debug.Log($"New Rotations: {rotatedPositions}");
+        //Debug.Log($"New Rotations: {rotatedPositions}");
 
         if (CheckBlockLocations(rotatedPositions))
         {
@@ -128,7 +147,7 @@ public class PieceScript : MonoBehaviour
                 _currentRotation = (_currentRotation + (clockwise ? 1 : -1)) % 4; // Increment the rotation state
             }
 
-                Debug.Log($"New State:{_currentRotation}");
+            //Debug.Log($"New State:{_currentRotation}");
             return true;
         }
         return false;
