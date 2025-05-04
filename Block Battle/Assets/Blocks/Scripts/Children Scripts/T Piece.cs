@@ -32,7 +32,7 @@ public class TPiece : PieceScript
         new Vector2(-1, 1) // Relative Right of pivot
     };
 
-    private Vector2[] _rotate3to4 = new Vector2[4] {
+    private Vector2[] _rotate3to0 = new Vector2[4] {
         new Vector2(0, 0), // Pivot/center
         new Vector2(-1, -1), // Relative Left of pivot
         new Vector2(-1, 1), // Relative Top of pivot
@@ -45,7 +45,7 @@ public class TPiece : PieceScript
         return _initalPositions;
     }
 
-    public override Vector2[] GetRotatedPositions(int stateFrom, bool isClockwise)
+    protected override Vector2[] GetRotatedPositions(int stateFrom, bool isClockwise)
     {
         if (isClockwise)
         {
@@ -56,10 +56,18 @@ public class TPiece : PieceScript
             else if (stateFrom == 2)
                 return _rotate2to3;
             else if (stateFrom == 3)
-                return _rotate3to4;
+                return _rotate3to0;
         }
         else
         {
+            if (stateFrom == 0)
+                return _rotate3to0;
+            else if (stateFrom == 1)
+                return _rotate0to1;
+            else if (stateFrom == 2)
+                return _rotate1to2;
+            else if (stateFrom == 3)
+                return _rotate2to3;
         }
         return _rotate0to1; // default to empty
     }

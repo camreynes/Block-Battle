@@ -10,8 +10,8 @@ public class PieceController : MonoBehaviour
 {
     [SerializeField] private GameObject[] _tetrominoPrefab = new GameObject[2];
     [SerializeField] protected BlockGrid _grid;
+    private float _timeToFall = 2f;
 
-    private float _timeToFall = .5f;
     private PieceScript _currentPiece;
     private int playerId = 0; // Player ID for input mapping, will make dynamic later
 
@@ -63,8 +63,10 @@ public class PieceController : MonoBehaviour
             OnMoveEnd(new Vector2(1, 0));
 
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, playerId))
-            _currentPiece.TryRotate(1);
-            
+            _currentPiece.TryRotateCW();
+        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, playerId))
+            _currentPiece.TryRotateCCW();
+
     }
 
     // Function to set hold states, only needed for keys that can be presse (move left, right and down)

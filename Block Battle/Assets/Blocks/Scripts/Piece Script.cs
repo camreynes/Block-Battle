@@ -83,14 +83,32 @@ public class PieceScript : MonoBehaviour
         return false;
     }
 
-    public bool TryRotate(int clockwise)
+    public bool TryRotateCW()
     {
-        Vector2[] rotatedOffsets = GetRotatedPositions(_currentRotation, true);
+        return TryRotate(true);
+    }
+    public bool TryRotateCCW()
+    {
+        return TryRotate(false);
+    }
+
+    private bool TryRotate(bool clockwise)
+    {
+        Vector2[] rotatedOffsets = GetRotatedPositions(_currentRotation, clockwise);
         Vector2[] rotatedPositions = new Vector2[_blocks.Length];
+
+        Debug.Log($"Initial Positions: {_positions}");
+        Debug.Log($"Rotation Vectors: {rotatedOffsets}");
         for (int i = 0; i < _blocks.Length; i++)
         {
-            rotatedPositions[i] = new Vector2(_positions[i].x + rotatedOffsets[i].x, _positions[i].y + rotatedOffsets[i].y);
-            Debug.Log($"Rotated position {i}: {rotatedPositions[i]} from initial position { i}: { _positions[i]}");
+            if (clockwise)
+            {
+                rotatedPositions[i] = _positions[i] + rotatedOffsets[i]; // Add the vectors
+            } else
+            {
+                rotatedPositions[i] = _positions[i] - rotatedOffsets[i]; // Subtract the vectors (revert direction)
+            }
+           
         }
         Debug.Log($"New Rotations: {rotatedPositions}");
 
@@ -98,13 +116,23 @@ public class PieceScript : MonoBehaviour
         {
             NullGridLocations();
             AssignNewLocations(rotatedPositions);
-            _currentRotation = (_currentRotation + clockwise) % 4; // increment the rotation state
+            Debug.Log($"Old State:{_currentRotation}");
+            if (_currentRotation == 0 && !clockwise)
+            {
+                _currentRotation = 3;
+            }
+            else
+            {
+                _currentRotation = (_currentRotation + (clockwise ? 1 : -1)) % 4; // Increment the rotation state
+            }
+
+                Debug.Log($"New State:{_currentRotation}");
             return true;
         }
         return false;
     }
 
-    public void AssignNewLocations(Vector2[] newPositions)
+    private void AssignNewLocations(Vector2[] newPositions)
     {
         for (int i = 0; i < _blocks.Length; i++)
         {
@@ -138,7 +166,7 @@ public class PieceScript : MonoBehaviour
 
 
     /// <summary>Changes block references in the array grid (that this piece is using) to null.</summary>
-    public void NullGridLocations()
+    private void NullGridLocations()
     {
         for (int i = 0; i < _blocks.Length; i++)
         {
@@ -171,7 +199,7 @@ public class PieceScript : MonoBehaviour
         return new Vector2[0]; // default to empty
     }
 
-    public virtual Vector2[] GetRotatedPositions(int stateFrom, bool isClockwise)
+    protected virtual Vector2[] GetRotatedPositions(int stateFrom, bool isClockwise)
     {
         return new Vector2[0]; // default to empty
     }
