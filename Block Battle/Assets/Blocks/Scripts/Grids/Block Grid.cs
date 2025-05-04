@@ -17,20 +17,21 @@ public class BlockGrid : MonoBehaviour
 
     public Vector2 scale = new Vector2(0,0);
 
-    private GameObject[,] blocksInGrid = new GameObject[20,10]; // Initialize array of gameObjects (cubes) representning the filled array
+    private GameObject[,] _blocksInGrid = new GameObject[20,10]; // Initialize array of gameObjects (cubes) representning the filled array
 
-    private void Awake()
-    {
-        // Initialize the inner array to avoid null reference issues
-        InitializeGrid();
-    }
+    //private void Awake()
+    //{
+    //    // Initialize the inner array to avoid null reference issues
+    //    InitializeGrid();
+    //}
 
-    private void InitializeGrid()
+    public void InitializeSelf(int playerID)
     {
         // Get the bounds of the gameObject and find height and width
         SpriteRenderer gridRenderer = gameObject.GetComponent<SpriteRenderer>();
         Bounds gridBounds = gridRenderer.bounds;
-        _position = new Vector2(gameObject.transform.position.x, gameObject.transform.position.y);
+        _position = new Vector2(transform.position.x, transform.position.y); // Get the position of the grid
+        Debug.Log($"Grid position: {_position}");
 
         double width = gridBounds.size.x / 10;
         double height = gridBounds.size.y / 20;
@@ -39,8 +40,10 @@ public class BlockGrid : MonoBehaviour
         // Initialize private widh and height (We do this in case we use a custom grid rather than the default 20x10 one)
         _width = width;
         _height = height;
+        _playerID = playerID;
 
         scale = gameObject.transform.localScale;
+        Debug.Log($"Grid height: {height}, width: {width}");
     }
 
     // Prints grid represented with 0s and 1s
@@ -49,7 +52,7 @@ public class BlockGrid : MonoBehaviour
         for (int r = 0; r < grid._rows; r++) {
             for (int c = 0; c < grid._cols; c++)
             {
-                GameObject block = grid.blocksInGrid[r, c];
+                GameObject block = grid._blocksInGrid[r, c];
                 if (block != null)
                 {
                     if (block.GetComponent<Block>().GetBlockStatus())
@@ -76,15 +79,19 @@ public class BlockGrid : MonoBehaviour
     // Rows count up from 0 to 19, Columns left to right from 0 to 9
     public Vector3 GetPosInGrid(int row, int col)
     {
-        //Debug.Log($"Getting position in grid at {row}, {col}");
+        //Debug.Log($"{_position}");
         return new Vector3((float)(_position.x + _width * col), (float)(_position.y - _height * row), 0);
+    }
+    public int getPlayerID()
+    {
+        return _playerID;
     }
 
     // More Public Methods, used to be in block class
     // Method to change the grid array
     public void SetBlockInGridArray(GameObject block, int x, int y)
     {
-        blocksInGrid[x, y] = block;
+        _blocksInGrid[x, y] = block;
     }
 
     // Method to check if space is avaiable based on offset, long method for debug atm
@@ -98,7 +105,7 @@ public class BlockGrid : MonoBehaviour
         }
 
         // Return true if the space is empty or the block is active
-        bool isValid = blocksInGrid[x, y] == null || blocksInGrid[x, y].GetComponent<Block>().GetBlockStatus();
+        bool isValid = _blocksInGrid[x, y] == null || _blocksInGrid[x, y].GetComponent<Block>().GetBlockStatus();
         if (isValid)
         {
             //Debug.Log($"Coordinates {x}, {y} are valid");

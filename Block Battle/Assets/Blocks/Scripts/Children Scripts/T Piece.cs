@@ -2,15 +2,68 @@ using UnityEngine;
 
 public class TPiece : PieceScript
 {
-    private Vector2[] positions = new Vector2[4] {
-        new Vector2(0, 4),
-        new Vector2(1, 3),
-        new Vector2(1, 4),
-        new Vector2(1, 5)
+    /// Piece inital positions for the T piece
+    private Vector2[] _initalPositions = new Vector2[4] {
+        new Vector2(1, 4), // Pivot/center
+        new Vector2(1, 3), // Left of pivot
+        new Vector2(0, 4), // Top of pivot
+        new Vector2(1, 5) // Right of pivot
     };
 
+    // 0 = 0 spawn/0 degrees, 1 = right/90 degrees, 2 = reverse/180 degrees, 3 = left/270 degrees
+    private Vector2[] _rotate0to1 = new Vector2[4] {
+        new Vector2(0, 0), // Pivot/center
+        new Vector2(-1, 1), // Relative Left of pivot
+        new Vector2(1, 1), // Relative Top of pivot
+        new Vector2(1, -1) // Relative Right of pivot
+    };
+
+    private Vector2[] _rotate1to2 = new Vector2[4] {
+        new Vector2(0, 0), // Pivot/center
+        new Vector2(1, 1), // Relative Left of pivot
+        new Vector2(1, -1), // Relative Top of pivot
+        new Vector2(-1, -1) // Relative Right of pivot
+    };
+
+    private Vector2[] _rotate2to3 = new Vector2[4] {
+        new Vector2(0, 0), // Pivot/center
+        new Vector2(1, -1), // Relative Left of pivot
+        new Vector2(-1, -1), // Relative Top of pivot
+        new Vector2(-1, 1) // Relative Right of pivot
+    };
+
+    private Vector2[] _rotate3to4 = new Vector2[4] {
+        new Vector2(0, 0), // Pivot/center
+        new Vector2(-1, -1), // Relative Left of pivot
+        new Vector2(-1, 1), // Relative Top of pivot
+        new Vector2(1, 1) // Relative Right of pivot
+    };
+
+    /// <summary>Piece inital positions override</summary>
     public override Vector2[] GetInitialPositions()
     {
-        return positions;
+        return _initalPositions;
     }
+
+    public override Vector2[] GetRotatedPositions(int stateFrom, bool isClockwise)
+    {
+        if (isClockwise)
+        {
+            if (stateFrom == 0)
+                return _rotate0to1;
+            else if (stateFrom == 1)
+                return _rotate1to2;
+            else if (stateFrom == 2)
+                return _rotate2to3;
+            else if (stateFrom == 3)
+                return _rotate3to4;
+        }
+        else
+        {
+        }
+        return _rotate0to1; // default to empty
+    }
+
+    // ROTAION METHODS
+
 }

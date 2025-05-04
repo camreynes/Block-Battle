@@ -11,7 +11,8 @@ using UnityEngine.InputSystem;
  */
 public static class TetrixInputManager
 {
-    private static readonly Dictionary<int, TetrixControls> playerControlsMap = new();
+    private static readonly Dictionary<int, TetrixControls> _playerControlsMap = new();
+    private static readonly Dictionary<int, GameObject> _playerGrids = new();
 
     private static readonly Dictionary<GameInputAction, Func<TetrixControls, InputAction>> actionMap = new()
     {
@@ -25,45 +26,51 @@ public static class TetrixInputManager
         [GameInputAction.PAUSE] = c => c.PlayerActions.Pause
     };
 
-    public static void RegisterPlayer(int playerId, PlayerInput input)
+    public static void RegisterPlayer(int playerID, PlayerInput input)
     {
-        if (playerControlsMap.ContainsKey(playerId)) return; // Already registered check
+        if (_playerControlsMap.ContainsKey(playerID)) return; // Already registered check
 
+        // Create a new TetrixControls instance for the player and enable it
         var controls = new TetrixControls();
         controls.devices = input.devices.ToArray();
         controls.Enable();
 
-        playerControlsMap[playerId] = controls;
+        // Create Grid for player
+        InitializeGrids grid_manager = GameObject.FindFirstObjectByType<InitializeGrids>();
+        GameObject newGrid = grid_manager.InitializeGrid(playerID);
+
+        _playerGrids[playerID] = newGrid; // Store the grid object for the player
+        _playerControlsMap[playerID] = controls;
     }
 
-    public static void UnregisterPlayer(int playerId)
+    public static void UnregisterPlayer(int playerID)
     {
-        if (playerControlsMap.TryGetValue(playerId, out var controls))
+        if (_playerControlsMap.TryGetValue(playerID, out var controls))
         {
             controls.Disable();
-            playerControlsMap.Remove(playerId);
+            _playerControlsMap.Remove(playerID);
         }
     }
 
-    public static bool WasPressed(GameInputAction action, int playerId)
+    public static bool WasPressed(GameInputAction action, int playerID)
     {
-        if (!playerControlsMap.TryGetValue(playerId, out var controls)) return false;  //  Ensure player is registered
+        if (!_playerControlsMap.TryGetValue(playerID, out var controls)) return false;  //  Ensure player is registered
         if (!actionMap.TryGetValue(action, out var getAction)) return false; // Ensure action is valid
 
         return getAction(controls).WasPressedThisFrame();
     }
 
-    public static bool IsHeld(GameInputAction action, int playerId)
+    public static bool IsHeld(GameInputAction action, int playerID)
     {
-        if (!playerControlsMap.TryGetValue(playerId, out var controls)) return false;
+        if (!_playerControlsMap.TryGetValue(playerID, out var controls)) return false;
         if (!actionMap.TryGetValue(action, out var getAction)) return false;
 
         return getAction(controls).IsPressed();
     }
 
-    public static InputAction GetInputAction(GameInputAction action, int playerId)
+    public static InputAction GetInputAction(GameInputAction action, int playerID)
     {
-        if (!playerControlsMap.TryGetValue(playerId, out var controls)) return null;
+        if (!_playerControlsMap.TryGetValue(playerID, out var controls)) return null;
         if (!actionMap.TryGetValue(action, out var getAction)) return null;
 
         return getAction(controls);

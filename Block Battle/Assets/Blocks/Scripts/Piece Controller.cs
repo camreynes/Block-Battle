@@ -11,7 +11,7 @@ public class PieceController : MonoBehaviour
     [SerializeField] private GameObject[] _tetrominoPrefab = new GameObject[2];
     [SerializeField] protected BlockGrid _grid;
 
-    private float _timeToFall = 0.8f;
+    private float _timeToFall = .5f;
     private PieceScript _currentPiece;
     private int playerId = 0; // Player ID for input mapping, will make dynamic later
 
@@ -48,7 +48,7 @@ public class PieceController : MonoBehaviour
 
         // PLAYER INPUTS
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, playerId))
-            OnMoveStart(new Vector2(0,-1));
+            OnMoveStart(new Vector2(0, -1));
         if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, playerId).WasReleasedThisFrame())
             OnMoveEnd(new Vector2(0, -1));
 
@@ -61,6 +61,10 @@ public class PieceController : MonoBehaviour
             OnMoveStart(new Vector2(1, 0));
         if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, playerId).WasReleasedThisFrame())
             OnMoveEnd(new Vector2(1, 0));
+
+        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, playerId))
+            _currentPiece.TryRotate(1);
+            
     }
 
     // Function to set hold states, only needed for keys that can be presse (move left, right and down)
@@ -109,13 +113,16 @@ public class PieceController : MonoBehaviour
     {
         //Debug.Log("Attempting to spawn Blocks");
         GameObject pieceObj = null;
-        pieceObj = Instantiate(_tetrominoPrefab[UnityEngine.Random.Range(0, 2)]);
+        pieceObj = Instantiate(_tetrominoPrefab[UnityEngine.Random.Range(1, 2)]);
         _currentPiece = pieceObj.GetComponent<PieceScript>();
 
         _currentPiece.SetGrid(_grid);
 
         Vector2[] _initialPositions = _currentPiece.GetInitialPositions();
         _positions = _initialPositions;
+        Debug.Log($"Initial positions from PieceController:");
+        PrintVector2Array(_initialPositions);
+
         _currentPiece.SetPositions(_initialPositions);
 
         bool canSpawn = _currentPiece.CheckBlockLocations(_positions);
@@ -130,8 +137,6 @@ public class PieceController : MonoBehaviour
 
         _currentPiece.SpawnBlocks(_initialPositions);
     }
-
-
 
     // Delay before the first block falls
     private IEnumerator DelayedStart()
@@ -152,16 +157,9 @@ public class PieceController : MonoBehaviour
             }
 
             // Create offset vectors (-1 y) and check if we can place there
-            Vector2[] newPieceLocations = _currentPiece.CreateOffsetVectors(1, 0);
-            bool canPlace = _currentPiece.CheckBlockLocations(newPieceLocations);
+            bool canPlace = _currentPiece.TryMovePiece(new Vector2(1,0));
 
-            if (canPlace)
-            {
-                _positions = newPieceLocations;
-                _currentPiece.OffsetBlocks(1,0);
-                //BlockGrid.PrintGrid(_grid);
-            }
-            else
+            if (!canPlace)
             {
                 // If we can't place the blocks, we need to spawn a new piece
                 _currentPiece.SetBlocksInactive();
@@ -175,6 +173,11 @@ public class PieceController : MonoBehaviour
 
             yield return new WaitForSeconds(_timeToFall); // fall every second
         }
+    }
+
+    public void SetGrid(BlockGrid grid)
+    {
+        _grid = grid;
     }
 
     public static void PrintVector2Array(Vector2[] vectors, string label = "Vector2 Array")

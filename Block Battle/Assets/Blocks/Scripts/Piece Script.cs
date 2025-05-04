@@ -10,27 +10,26 @@ public class PieceScript : MonoBehaviour
     protected GameObject[] _blocks;
 
     private Vector2[] _positions;
+    private int _currentRotation = 0; // 0 = 0 spawn/0 degrees, 1 = right/90 degrees, 2 = reverse/180 degrees, 3 = left/270 degrees
 
     public void SetGrid(BlockGrid grid)
     {
+        Debug.Log($"Setting grid to {grid.gameObject.name}");
         _blockGrid = grid;
     }
 
-    // Helper method to instantiate all the game objects  
+    /// <summary>Instantiates all the game objects to create the child piece (i.e. T, L, etc.)</summary>
+    /// <param name="vectors">Vectors is a set of initial positions where the blocks will be spawned</param>
     public void SpawnBlocks(Vector2[] vectors)
     {
-        /**  
-         * Get the number of blocks from the amount of positions passed  
-         * Initialize objects  
-         * Spawn them  
-         */
         int numBlocks = vectors.Length;
         _blocks = new GameObject[numBlocks];
+        gameObject.transform.parent = GameObject.Find($"PieceController_{_blockGrid.getPlayerID()}").transform; // Set the parent of the piece to the grid attached to the player controlling it
 
         // Iterate through each block, instantiating it, asigning a parent, making it active, initalizing it in array, and initalizing position
         for (int i = 0; i < numBlocks; i++)
         {
-            //Debug.Log($"Spawning block {i} at {vectors[i]}");
+            Debug.Log($"Spawning block {i} at {vectors[i]}");
             GameObject block = Instantiate(_blockPrefab);
             Block blockScript = block.GetComponent<Block>();
             blockScript.SetGrid(_blockGrid.gameObject);
@@ -39,10 +38,13 @@ public class PieceScript : MonoBehaviour
             blockScript.SetBlockStatus(true);
             block.transform.parent = transform;
             _blocks[i] = block;
-            _blocks[i].GetComponent<Block>().InitializePosition((int)vectors[i].x, (int)vectors[i].y);
+            _blocks[i].GetComponent<Block>().InitializePosition((int)vectors[i].x, (int)vectors[i].y,i);
         }
     }
 
+    /// <summary>Checks if the blocks can be placed in the given positions. This is used to check if the blocks can be moved or rotated.</summary>
+    /// <param name="positions">Set of vectors representing positons to be checked</param>
+    /// <returns>Return true if valid spots, false otherwise</returns>
     public bool CheckBlockLocations(Vector2[] positions)
     {
         foreach (Vector2 position in positions)
@@ -53,8 +55,10 @@ public class PieceScript : MonoBehaviour
         return true;
     }
 
-    // Offsets the given vectors returning the new vector  
-    // Primarily used to check if the new spots in the grid are aviable  
+    /// <summary>Creates a new set of vectors based on the current positions of the blocks and the given offsets. Remeber coordinate system is based on array logic (top left is 0,0), not unity coordinates.</summary>
+    /// <param name="offsetX">deltaX</param>
+    /// <param name="offsetY">deltaY</param>
+    /// <returns>Returns the new offseted vectors as an array</returns>
     public Vector2[] CreateOffsetVectors(int offsetX, int offsetY)
     {
         Vector2[] returnVectors = new Vector2[_positions.Length];
@@ -65,7 +69,52 @@ public class PieceScript : MonoBehaviour
         return returnVectors;
     }
 
-    // Sets all blocks to inactive  
+    /// <summary>Attempt to move the piece (in array and unity).</summary>'
+    /// <param name="offset">Offset vector to be applied to the piece</param>
+    /// <returns>True if the move was successful, false otherwise</returns>
+    public bool TryMovePiece(Vector2 offset)
+    {
+        Vector2[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y);
+        if (CheckBlockLocations(newPositions))
+        {
+            OffsetBlocks((int)offset.x, (int)offset.y);
+            return true;
+        }
+        return false;
+    }
+
+    public bool TryRotate(int clockwise)
+    {
+        Vector2[] rotatedOffsets = GetRotatedPositions(_currentRotation, true);
+        Vector2[] rotatedPositions = new Vector2[_blocks.Length];
+        for (int i = 0; i < _blocks.Length; i++)
+        {
+            rotatedPositions[i] = new Vector2(_positions[i].x + rotatedOffsets[i].x, _positions[i].y + rotatedOffsets[i].y);
+            Debug.Log($"Rotated position {i}: {rotatedPositions[i]} from initial position { i}: { _positions[i]}");
+        }
+        Debug.Log($"New Rotations: {rotatedPositions}");
+
+        if (CheckBlockLocations(rotatedPositions))
+        {
+            NullGridLocations();
+            AssignNewLocations(rotatedPositions);
+            _currentRotation = (_currentRotation + clockwise) % 4; // increment the rotation state
+            return true;
+        }
+        return false;
+    }
+
+    public void AssignNewLocations(Vector2[] newPositions)
+    {
+        for (int i = 0; i < _blocks.Length; i++)
+        {
+            _positions[i] = newPositions[i];
+            _blockGrid.SetBlockInGridArray(_blocks[i], (int)_positions[i].x, (int)_positions[i].y);
+            _blocks[i].GetComponent<Block>().ChangeUnityPosition((int)_positions[i].x, (int)_positions[i].y);
+        }
+    }
+
+    /// <summary>Sets the blocks to inactive. This is used when the blocks are no longer in play (i.e. when they are placed in the grid).</summary>
     public void SetBlocksInactive()
     {
         for (int i = 0; i < _blocks.Length; i++)
@@ -79,14 +128,17 @@ public class PieceScript : MonoBehaviour
         }
     }
 
+    /// <summary>Simple setter method to hardset the positions of the blocks. Doesn't change the block locations in the grid.
+    /// Generally only used for initialization of the piece.</summary>
+    /// <param name="positions">Initial position vectors</param>
     public void SetPositions(Vector2[] positions)
     {
         _positions = positions;
     }
 
 
-    // Method to set, clear, and offset the position of the blocks
-    public void ClearLocations()
+    /// <summary>Changes block references in the array grid (that this piece is using) to null.</summary>
+    public void NullGridLocations()
     {
         for (int i = 0; i < _blocks.Length; i++)
         {
@@ -94,9 +146,10 @@ public class PieceScript : MonoBehaviour
         }
     }
 
+    /// <summary>Offsets the blocks in the grid and updates their positions (in Unity and the array). This is used when the blocks are moved.</summary>
     public void OffsetBlocks(int offsetX, int offsetY)
     {
-        ClearLocations();
+        NullGridLocations();
         for (int i = 0; i < _blocks.Length; i++)
         {
             _positions[i].x += offsetX;
@@ -106,30 +159,19 @@ public class PieceScript : MonoBehaviour
         }
     }
 
-
-    //// Method to update the position and also update the blockgrid aswell
-    //public void UpdatePosition(int x, int y)
-    //{
-    //    _blockGrid.SetBlockInGridArray(null, _posx, _posy);
-    //    gameObject.transform.position = _blockGrid.GetPosInGrid(x, y);
-    //    SetPos(x, y);
-    //    _blockGrid.SetBlockInGridArray(gameObject, x, y);
-    //}
-
-    //// Method to offset the position and also update the blockgrid aswell, assumes checkSpace already called
-    //public void MoveByOffset(int offSetX, int offSetY)
-    //{
-    //    UpdatePosition(_posx + offSetX, _posy + offSetY);
-    //}
-
-    // Getter method returning positions of the blokcs
+    /// <summary>Returns the current positions of the blocks.</summary>
     public virtual Vector2[] GetPositions()
     {
         return _positions;
     }
 
-    // Overridable method to get the initial positions of the blocks
+    /// <summary>Returns the inital position of the piece. Simply overriden in each child piece to define starting locations.</summary>
     public virtual Vector2[] GetInitialPositions()
+    {
+        return new Vector2[0]; // default to empty
+    }
+
+    public virtual Vector2[] GetRotatedPositions(int stateFrom, bool isClockwise)
     {
         return new Vector2[0]; // default to empty
     }

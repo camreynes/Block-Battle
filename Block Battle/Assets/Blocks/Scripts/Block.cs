@@ -10,17 +10,21 @@ public class Block : MonoBehaviour
     protected GameObject _grid;
     protected BlockGrid _blockGrid;
 
+    // Solely for Debug
+    private int _identifier;
+
     public void SetPos(int x, int y)
     {
         _posx = x;
         _posy = y;
     }
 
-    public void InitializePosition(int x, int y)
+    public void InitializePosition(int x, int y, int identifier)
     {
         _blockGrid.SetBlockInGridArray(gameObject, x, y);
         SetPos(x, y);
         gameObject.transform.position = _blockGrid.GetPosInGrid(x, y);
+        _identifier = identifier;
     }
 
     // Method to change piece location
@@ -28,7 +32,7 @@ public class Block : MonoBehaviour
     {
         gameObject.transform.position = _blockGrid.GetPosInGrid(x, y);
         SetPos(x, y);
-        //Debug.Log($"Block position changed to: {x}, {y}");
+        Debug.Log($"Block position changed to: {x}, {y}");
     }
 
     public bool GetBlockStatus()
