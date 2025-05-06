@@ -74,7 +74,7 @@ public class PieceController : MonoBehaviour
         if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerId))
             HardDrop();
 
-            // PLAYER INPUTS - ROTATIONS
+        // PLAYER INPUTS - ROTATIONS
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, _playerId))
             _recentlyMoved = _currentPiece.TryRotateCW();
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerId))
@@ -165,53 +165,63 @@ public class PieceController : MonoBehaviour
                 continue;
             }
 
-            bool canMoveDown = _currentPiece.TestOffset(new Vector2Int(1,0)); // Can we place below?
+            bool canMoveDown = _currentPiece.TestOffset(new Vector2Int(1, 0)); // Can we place below?
             float timer = 0;
 
             if (canMoveDown) // Normal falling, using a timer here instead of waitForSeconds so it can be interrupted
             {
-                while (timer < _timeToFall && !_forceHardDrop)
-                {
-                    timer += Time.deltaTime;
-                    yield return null;
-                }
-
-                if (!_forceHardDrop)
-                    _currentPiece.TryMovePiece(new Vector2Int(1, 0));
+                yield return WaitAndFall();
             }
 
             else // Lock Delay
             {
-                
-                float lastLockDelay = 0; // add the differencv between the last lock delay and the current one
-                float currentMaxtime = Math.Min(_timeToFall, _lockDelay);
-                bool newMovePossible = false;
-
-                while (timer < currentMaxtime && !_forceHardDrop)
-                {
-                    Debug.Log(timer);
-                    if (_recentlyMoved && !newMovePossible)
-                    {
-                        newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(1, 0));
-                        currentMaxtime = Math.Min(currentMaxtime + _lockDelay - lastLockDelay, _maxLockDelay);
-                        lastLockDelay = .5f;
-                    }
-                    timer += Time.deltaTime;
-                    lastLockDelay = Math.Max(0f, lastLockDelay - Time.deltaTime);
-                    yield return null;
-                }
-                if (canMoveDown)
-                {
-                    _currentPiece.TryMovePiece(new Vector2Int(1,0));
-                }
-                else
-                {
-                    _currentPiece?.SetBlocksInactive();
-                    _currentPiece = null;
-                }
-                
+                yield return LockDelay();
             }
 
+        }
+    }
+
+    private IEnumerator WaitAndFall()
+    {
+        float timer = 0f;
+        while (timer < _timeToFall && !_forceHardDrop)
+        {
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        if (!_forceHardDrop)
+            _currentPiece.TryMovePiece(new Vector2Int(1, 0));
+    }
+
+    private IEnumerator LockDelay()
+    {
+        float timer = 0;
+        bool canMoveDown = false;
+        float lastLockDelay = 0; // add the differencv between the last lock delay and the current one
+        float currentMaxtime = Math.Min(_timeToFall, _lockDelay);
+        bool newMovePossible = false;
+
+        while (timer < currentMaxtime && !_forceHardDrop)
+        {
+            Debug.Log(timer);
+            if (_recentlyMoved && !newMovePossible)
+            {
+                newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(1, 0));
+                currentMaxtime = Math.Min(currentMaxtime + _lockDelay - lastLockDelay, _maxLockDelay);
+                lastLockDelay = .5f;
+            }
+            timer += Time.deltaTime;
+            lastLockDelay = Math.Max(0f, lastLockDelay - Time.deltaTime);
+            yield return null;
+        }
+        if (canMoveDown && !_forceHardDrop)
+        {
+            _currentPiece.TryMovePiece(new Vector2Int(1, 0));
+        }
+        else
+        {
+            _currentPiece?.SetBlocksInactive();
+            _currentPiece = null;
         }
     }
 

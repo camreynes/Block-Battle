@@ -5,14 +5,13 @@ using UnityEngine;
 public class PieceScript : MonoBehaviour
 {
     [SerializeField] protected GameObject _blockPrefab;
+    //PieceType _pieceType;
 
-    protected BlockGrid _blockGrid;
-    protected GameObject[] _blocks;
+    private BlockGrid _blockGrid;
+    private GameObject[] _blocks;
 
     private Vector2Int[] _positions;
     private int _currentRotation = 0; // 0 = 0 spawn/0 degrees, 1 = right/90 degrees, 2 = reverse/180 degrees, 3 = left/270 degrees
-
-    public virtual PieceType PieceType { get; }
 
     public void SetGrid(BlockGrid grid)
     {
@@ -20,10 +19,13 @@ public class PieceScript : MonoBehaviour
         _blockGrid = grid;
     }
 
+    // -----------------------INITILIZATION AND CHECKING OF BLOCKS-----------------------
+
     /// <summary>Instantiates all the game objects to create the child piece (i.e. T, L, etc.)</summary>
     /// <param name="vectors">Vectors is a set of initial positions where the blocks will be spawned</param>
     public void SpawnBlocks(Vector2Int[] vectors)
     {
+        //PieceType = this.PieceType;
         int numBlocks = vectors.Length;
         _blocks = new GameObject[numBlocks];
         gameObject.transform.parent = GameObject.Find($"PieceController_{_blockGrid.getPlayerID()}").transform; // Set the parent of the piece to the grid attached to the player controlling it
@@ -57,19 +59,18 @@ public class PieceScript : MonoBehaviour
         return true;
     }
 
-    /// <summary>Creates a new set of vectors based on the current positions of the blocks and the given offsets. Remeber coordinate system is based on array logic (top left is 0,0), not unity coordinates.</summary>
-    /// <param name="offsetX">deltaX</param>
-    /// <param name="offsetY">deltaY</param>
-    /// <returns>Returns the new offseted vectors as an array</returns>
-    public Vector2Int[] CreateOffsetVectors(int offsetX, int offsetY)
+    /// <summary>Test if the piece can be moved to the new position without actually moving it.</summary>
+    public bool TestOffset(Vector2Int offset)
     {
-        Vector2Int[] returnVectors = new Vector2Int[_positions.Length];
-        for (int i = 0; i < _positions.Length; i++)
+        Vector2Int[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y);
+        if (CheckBlockLocations(newPositions))
         {
-            returnVectors[i] = new Vector2Int(_positions[i].x + offsetX, _positions[i].y + offsetY);
+            return true;
         }
-        return returnVectors;
+        return false;
     }
+
+    // -----------------------MOVING BLOCKS-----------------------
 
     public void HardDrop()
     {
@@ -93,16 +94,7 @@ public class PieceScript : MonoBehaviour
         return false;
     }
 
-    /// <summary>Test if the piece can be moved to the new position without actually moving it.</summary>
-    public bool TestOffset(Vector2Int offset)
-    {
-        Vector2Int[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y);
-        if (CheckBlockLocations(newPositions))
-        {
-            return true;
-        }
-        return false;
-    }
+    // -----------------------ROTATING BLOCKS-----------------------
 
     public bool TryRotateCW()
     {
@@ -113,38 +105,96 @@ public class PieceScript : MonoBehaviour
         return TryRotate(false);
     }
 
-    private bool TryRotate(bool clockwise)
-    {
-        Vector2Int[] rotatedOffsets = GetRotatedPositions(_currentRotation, clockwise);
-        Vector2Int[] rotatedPositions = new Vector2Int[_blocks.Length];
+    // -----------------------PUBLIC AND PROTECTED GETTERS-----------------------
 
-        //Debug.Log($"Initial Positions: {_positions}");
-        //Debug.Log($"Rotation Vectors: {rotatedOffsets}");
+    /// <summary>Simple setter method to hardset the positions of the blocks. Doesn't change the block locations in the grid.
+    /// Generally only used for initialization of the piece.</summary>
+    /// <param name="positions">Initial position vectors</param>
+    public void SetPositions(Vector2Int[] positions)
+    {
+        _positions = positions;
+    }
+
+    public virtual PieceType PieceType { get; }
+
+    /// <summary>Returns the inital position of the piece. Simply overriden in each child piece to define starting locations.</summary>
+    public virtual Vector2Int[] GetInitialPositions()
+    {
+        return new Vector2Int[0]; // default to empty
+    }
+
+    protected virtual Vector2Int[] GetRotatedPositions(int stateFrom, bool isClockwise)
+    {
+        return new Vector2Int[0]; // default to empty
+    }
+
+    // -----------------------MOVING BLOCKS HELPERS-----------------------
+
+    /// <summary>Offsets the blocks in the grid and updates their positions (in Unity and the array). This is used when the blocks are moved.</summary>
+    private void OffsetBlocks(int offsetX, int offsetY)
+    {
+        NullGridLocations();
         for (int i = 0; i < _blocks.Length; i++)
         {
-            if (clockwise)
-            {
-                rotatedPositions[i] = _positions[i] + rotatedOffsets[i]; // Add the vectors
-            } else
-            {
-                rotatedPositions[i] = _positions[i] - rotatedOffsets[i]; // Subtract the vectors (revert direction)
-            }
-           
+            _positions[i].x += offsetX;
+            _positions[i].y += offsetY;
+            _blockGrid.SetBlockInGridArray(_blocks[i], (int)_positions[i].x, (int)_positions[i].y);
+            _blocks[i].GetComponent<Block>().ChangeUnityPosition((int)_positions[i].x, (int)_positions[i].y);
         }
-        //Debug.Log($"New Rotations: {rotatedPositions}");
+    }
+    private void AssignNewLocations(Vector2Int[] newPositions)
+    {
+        for (int i = 0; i < _blocks.Length; i++)
+        {
+            _positions[i] = newPositions[i];
+            _blockGrid.SetBlockInGridArray(_blocks[i], (int)_positions[i].x, (int)_positions[i].y);
+            _blocks[i].GetComponent<Block>().ChangeUnityPosition((int)_positions[i].x, (int)_positions[i].y);
+        }
+    }
 
-        if (CheckBlockLocations(rotatedPositions))
+    /// <summary>Creates a new set of vectors based on the current positions of the blocks and the given offsets. Remeber coordinate system is based on array logic (top left is 0,0), not unity coordinates.</summary>
+    /// <param name="offsetX">deltaX</param>
+    /// <param name="offsetY">deltaY</param>
+    /// <returns>Returns the new offseted vectors as an array</returns>
+    private Vector2Int[] CreateOffsetVectors(int offsetX, int offsetY)
+    {
+        Vector2Int[] returnVectors = new Vector2Int[_positions.Length];
+        for (int i = 0; i < _positions.Length; i++)
+        {
+            returnVectors[i] = new Vector2Int(_positions[i].x + offsetX, _positions[i].y + offsetY);
+        }
+        return returnVectors;
+    }
+
+    // -----------------------ROTATING BLOCKS HELPERS-----------------------
+
+    private bool TryRotate(bool isClockwise)
+    {
+
+        //Debug.Log($"New Rotations: {rotatedPositions}");
+        Vector2Int[][] rotatedPositions = new Vector2Int[5][];
+        rotatedPositions[0] = CreateOffsetRotationVectors(isClockwise);
+
+        for (int i = 1; i < 5; i++)
+        {
+
+            Vector2Int[] SRSKickMovementOffset = KickTableManager.GetSRSKicks(PieceType, (RotationState)_currentRotation, (RotationState)((_currentRotation + (isClockwise ? 1 : -1)) % 4));
+                
+        }
+
+        // Assign new rotations
+        if (CheckBlockLocations(rotatedPositions[0]))
         {
             NullGridLocations();
-            AssignNewLocations(rotatedPositions);
+            AssignNewLocations(rotatedPositions[0]);
             Debug.Log($"Old State:{_currentRotation}");
-            if (_currentRotation == 0 && !clockwise)
+            if (_currentRotation == 0 && !isClockwise)
             {
                 _currentRotation = 3;
             }
             else
             {
-                _currentRotation = (_currentRotation + (clockwise ? 1 : -1)) % 4; // Increment the rotation state
+                _currentRotation = (_currentRotation + (isClockwise ? 1 : -1)) % 4; // Increment the rotation state
             }
 
             //Debug.Log($"New State:{_currentRotation}");
@@ -153,13 +203,27 @@ public class PieceScript : MonoBehaviour
         return false;
     }
 
-    private void AssignNewLocations(Vector2Int[] newPositions)
+    /// <summary>Creates a new set of rotated vectors based on the current positions of the blocks and whether the rotation is CW or CCW.</summary>
+    private Vector2Int[] CreateOffsetRotationVectors(bool isClockwise) {
+        Vector2Int[] rotatedOffsets = GetRotatedPositions(_currentRotation, isClockwise);
+        Vector2Int[] rotatedPositions = new Vector2Int[_blocks.Length];
+        for (int i = 0; i < _blocks.Length; i++)
+        {
+            rotatedPositions[i] = new Vector2Int(_positions[i].x + rotatedOffsets[i].x, _positions[i].y + rotatedOffsets[i].y);
+        }
+        //Debug.Log($"Initial Positions: {_positions}");
+        //Debug.Log($"Rotation Vectors: {rotatedOffsets}");
+        return rotatedPositions;
+    }
+
+    // -----------------------NULL BLOCKS HELPERS-----------------------
+
+    /// <summary>Changes block references in the array grid (that this piece is using) to null.</summary>
+    private void NullGridLocations()
     {
         for (int i = 0; i < _blocks.Length; i++)
         {
-            _positions[i] = newPositions[i];
-            _blockGrid.SetBlockInGridArray(_blocks[i], (int)_positions[i].x, (int)_positions[i].y);
-            _blocks[i].GetComponent<Block>().ChangeUnityPosition((int)_positions[i].x, (int)_positions[i].y);
+            _blockGrid.SetBlockInGridArray(null, (int)_positions[i].x, (int)_positions[i].y);
         }
     }
 
@@ -177,51 +241,4 @@ public class PieceScript : MonoBehaviour
         }
     }
 
-    /// <summary>Simple setter method to hardset the positions of the blocks. Doesn't change the block locations in the grid.
-    /// Generally only used for initialization of the piece.</summary>
-    /// <param name="positions">Initial position vectors</param>
-    public void SetPositions(Vector2Int[] positions)
-    {
-        _positions = positions;
-    }
-
-
-    /// <summary>Changes block references in the array grid (that this piece is using) to null.</summary>
-    private void NullGridLocations()
-    {
-        for (int i = 0; i < _blocks.Length; i++)
-        {
-            _blockGrid.SetBlockInGridArray(null, (int)_positions[i].x, (int)_positions[i].y);
-        }
-    }
-
-    /// <summary>Offsets the blocks in the grid and updates their positions (in Unity and the array). This is used when the blocks are moved.</summary>
-    public void OffsetBlocks(int offsetX, int offsetY)
-    {
-        NullGridLocations();
-        for (int i = 0; i < _blocks.Length; i++)
-        {
-            _positions[i].x += offsetX;
-            _positions[i].y += offsetY;
-            _blockGrid.SetBlockInGridArray(_blocks[i], (int)_positions[i].x, (int)_positions[i].y);
-            _blocks[i].GetComponent<Block>().ChangeUnityPosition((int)_positions[i].x, (int)_positions[i].y);
-        }
-    }
-
-    /// <summary>Returns the current positions of the blocks.</summary>
-    public virtual Vector2Int[] GetPositions()
-    {
-        return _positions;
-    }
-
-    /// <summary>Returns the inital position of the piece. Simply overriden in each child piece to define starting locations.</summary>
-    public virtual Vector2Int[] GetInitialPositions()
-    {
-        return new Vector2Int[0]; // default to empty
-    }
-
-    protected virtual Vector2Int[] GetRotatedPositions(int stateFrom, bool isClockwise)
-    {
-        return new Vector2Int[0]; // default to empty
-    }
 }
