@@ -5,7 +5,7 @@ using UnityEngine;
 public class PieceScript : MonoBehaviour
 {
     [SerializeField] protected GameObject _blockPrefab;
-    //PieceType _pieceType;
+    PieceType _pieceType;
 
     private BlockGrid _blockGrid;
     private GameObject[] _blocks;
@@ -123,6 +123,11 @@ public class PieceScript : MonoBehaviour
         return new Vector2Int[0]; // default to empty
     }
 
+    public virtual PieceType GetPieceType()
+    {
+        return PieceType;
+    }
+
     protected virtual Vector2Int[] GetRotatedPositions(int stateFrom, bool isClockwise)
     {
         return new Vector2Int[0]; // default to empty
@@ -173,43 +178,44 @@ public class PieceScript : MonoBehaviour
 
         //Debug.Log($"New Rotations: {rotatedPositions}");
         Vector2Int[][] rotatedPositions = new Vector2Int[5][];
-        rotatedPositions[0] = CreateOffsetRotationVectors(isClockwise);
+        rotatedPositions[0] = CreateOffsetRotationVectors(isClockwise, _positions);
 
-        for (int i = 1; i < 5; i++)
+        Vector2Int[] SRSMoveOffset = KickTableManager.GetSRSKicks(_pieceType, _currentRotation, isClockwise);
+        PieceController.PrintVector2Array(SRSMoveOffset);
+        for (int i = 1; i < SRSMoveOffset.Length; i++) // For each SRSKick, add the offset to the original vector and rotatae
         {
-
-            Vector2Int[] SRSKickMovementOffset = KickTableManager.GetSRSKicks(PieceType, (RotationState)_currentRotation, (RotationState)((_currentRotation + (isClockwise ? 1 : -1)) % 4));
-                
+            rotatedPositions[i] = new Vector2Int[_positions.Length];
+            for (int j = 0; j < _blocks.Length; j++)
+            {
+                Debug.Log(new Vector2Int(_positions[j].x + SRSMoveOffset[i].x, _positions[j].y + SRSMoveOffset[i].y)); // For SRS kicks add movement offsets then rotate them
+                rotatedPositions[i][j] = new Vector2Int(_positions[j].x + SRSMoveOffset[i].x, _positions[j].y + SRSMoveOffset[i].y);
+            }
+            rotatedPositions[i] = CreateOffsetRotationVectors(isClockwise, rotatedPositions[i]);
         }
 
-        // Assign new rotations
-        if (CheckBlockLocations(rotatedPositions[0]))
+        // Try all rotations, roatte if possible
+        for (int i = 0; i < rotatedPositions.Length; i++)
         {
-            NullGridLocations();
-            AssignNewLocations(rotatedPositions[0]);
-            Debug.Log($"Old State:{_currentRotation}");
-            if (_currentRotation == 0 && !isClockwise)
+            if (CheckBlockLocations(rotatedPositions[i]))
             {
-                _currentRotation = 3;
+                NullGridLocations();
+                AssignNewLocations(rotatedPositions[i]);
+                Debug.Log($"Old State:{_currentRotation}");
+                _currentRotation = (_currentRotation == 0 && !isClockwise) ? 3 : (_currentRotation + (isClockwise ? 1 : -1)) % 4;
+                Debug.Log($"New State:{_currentRotation}");
+                return true;
             }
-            else
-            {
-                _currentRotation = (_currentRotation + (isClockwise ? 1 : -1)) % 4; // Increment the rotation state
-            }
-
-            //Debug.Log($"New State:{_currentRotation}");
-            return true;
         }
         return false;
     }
 
     /// <summary>Creates a new set of rotated vectors based on the current positions of the blocks and whether the rotation is CW or CCW.</summary>
-    private Vector2Int[] CreateOffsetRotationVectors(bool isClockwise) {
+    private Vector2Int[] CreateOffsetRotationVectors(bool isClockwise, Vector2Int[] positions) {
         Vector2Int[] rotatedOffsets = GetRotatedPositions(_currentRotation, isClockwise);
         Vector2Int[] rotatedPositions = new Vector2Int[_blocks.Length];
         for (int i = 0; i < _blocks.Length; i++)
         {
-            rotatedPositions[i] = new Vector2Int(_positions[i].x + rotatedOffsets[i].x, _positions[i].y + rotatedOffsets[i].y);
+            rotatedPositions[i] = new Vector2Int(positions[i].x + rotatedOffsets[i].x, positions[i].y + rotatedOffsets[i].y);
         }
         //Debug.Log($"Initial Positions: {_positions}");
         //Debug.Log($"Rotation Vectors: {rotatedOffsets}");
