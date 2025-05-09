@@ -25,7 +25,7 @@ public class PieceScript : MonoBehaviour
     /// <param name="vectors">Vectors is a set of initial positions where the blocks will be spawned</param>
     public void SpawnBlocks(Vector2Int[] vectors)
     {
-        //PieceType = this.PieceType;
+        _pieceType = GetPieceType();
         int numBlocks = vectors.Length;
         _blocks = new GameObject[numBlocks];
         gameObject.transform.parent = GameObject.Find($"PieceController_{_blockGrid.getPlayerID()}").transform; // Set the parent of the piece to the grid attached to the player controlling it
@@ -62,7 +62,7 @@ public class PieceScript : MonoBehaviour
     /// <summary>Test if the piece can be moved to the new position without actually moving it.</summary>
     public bool TestOffset(Vector2Int offset)
     {
-        Vector2Int[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y);
+        Vector2Int[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y, _positions);
         if (CheckBlockLocations(newPositions))
         {
             return true;
@@ -85,7 +85,7 @@ public class PieceScript : MonoBehaviour
     /// <returns>True if the move was successful, false otherwise</returns>
     public bool TryMovePiece(Vector2Int offset)
     {
-        Vector2Int[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y);
+        Vector2Int[] newPositions = CreateOffsetVectors((int)offset.x, (int)offset.y, _positions);
         if (CheckBlockLocations(newPositions))
         {
             OffsetBlocks((int)offset.x, (int)offset.y);
@@ -161,12 +161,12 @@ public class PieceScript : MonoBehaviour
     /// <param name="offsetX">deltaX</param>
     /// <param name="offsetY">deltaY</param>
     /// <returns>Returns the new offseted vectors as an array</returns>
-    private Vector2Int[] CreateOffsetVectors(int offsetX, int offsetY)
+    private Vector2Int[] CreateOffsetVectors(int offsetX, int offsetY, Vector2Int[] positions)
     {
-        Vector2Int[] returnVectors = new Vector2Int[_positions.Length];
-        for (int i = 0; i < _positions.Length; i++)
+        Vector2Int[] returnVectors = new Vector2Int[positions.Length];
+        for (int i = 0; i < positions.Length; i++)
         {
-            returnVectors[i] = new Vector2Int(_positions[i].x + offsetX, _positions[i].y + offsetY);
+            returnVectors[i] = new Vector2Int(positions[i].x + offsetX, positions[i].y + offsetY);
         }
         return returnVectors;
     }
@@ -176,21 +176,21 @@ public class PieceScript : MonoBehaviour
     private bool TryRotate(bool isClockwise)
     {
 
-        //Debug.Log($"New Rotations: {rotatedPositions}");
+
+        //PieceController.PrintVector2Array(_positions);
         Vector2Int[][] rotatedPositions = new Vector2Int[5][];
         rotatedPositions[0] = CreateOffsetRotationVectors(isClockwise, _positions);
 
         Vector2Int[] SRSMoveOffset = KickTableManager.GetSRSKicks(_pieceType, _currentRotation, isClockwise);
-        PieceController.PrintVector2Array(SRSMoveOffset);
+        //PieceController.PrintVector2Array(SRSMoveOffset);
         for (int i = 1; i < SRSMoveOffset.Length; i++) // For each SRSKick, add the offset to the original vector and rotatae
         {
-            rotatedPositions[i] = new Vector2Int[_positions.Length];
-            for (int j = 0; j < _blocks.Length; j++)
-            {
-                Debug.Log(new Vector2Int(_positions[j].x + SRSMoveOffset[i].x, _positions[j].y + SRSMoveOffset[i].y)); // For SRS kicks add movement offsets then rotate them
-                rotatedPositions[i][j] = new Vector2Int(_positions[j].x + SRSMoveOffset[i].x, _positions[j].y + SRSMoveOffset[i].y);
-            }
-            rotatedPositions[i] = CreateOffsetRotationVectors(isClockwise, rotatedPositions[i]);
+            rotatedPositions[i] = new Vector2Int[_blocks.Length];
+            rotatedPositions[0].CopyTo(rotatedPositions[i], 0);
+            PieceController.PrintVector2Array(rotatedPositions[i], $"before movement at {i}");
+            Debug.Log($"KICKTABLE OFFSET: {SRSMoveOffset[i].x} {SRSMoveOffset[i].y}");
+            rotatedPositions[i] = CreateOffsetVectors(SRSMoveOffset[i].x, SRSMoveOffset[i].y, rotatedPositions[i]);
+            PieceController.PrintVector2Array(rotatedPositions[i], $"after movement at {i}");
         }
 
         // Try all rotations, roatte if possible
@@ -198,11 +198,11 @@ public class PieceScript : MonoBehaviour
         {
             if (CheckBlockLocations(rotatedPositions[i]))
             {
+                Debug.Log($"Rotating with i = {i}");
+                PieceController.PrintVector2Array(rotatedPositions[i]);
                 NullGridLocations();
                 AssignNewLocations(rotatedPositions[i]);
-                Debug.Log($"Old State:{_currentRotation}");
                 _currentRotation = (_currentRotation == 0 && !isClockwise) ? 3 : (_currentRotation + (isClockwise ? 1 : -1)) % 4;
-                Debug.Log($"New State:{_currentRotation}");
                 return true;
             }
         }

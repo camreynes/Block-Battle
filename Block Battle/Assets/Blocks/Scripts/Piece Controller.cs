@@ -10,7 +10,7 @@ public class PieceController : MonoBehaviour
 {
     [SerializeField] private GameObject[] _tetrominoPrefab = new GameObject[2];
     [SerializeField] protected BlockGrid _grid;
-    private float _timeToFall = .8f;
+    private float _timeToFall = 999999.8f;
     private float _lockDelay = .5f;
     private float _maxLockDelay = 1.5f;
 

@@ -48,6 +48,10 @@ public static class KickTableManager
     {
         int stateTo = (stateFrom == 0 && !isClockwise) ? 3 : stateFrom - 1; // Fixes the 0 case
         (int, int) stateFromTo = (stateFrom, isClockwise ? Math.Abs((stateFrom + 1) % 4) : stateTo);
+
+        Debug.Log($"KickTableManager: Getting SRS kicks for {type} from {stateFrom} to {stateTo}");
+        Vector2Int[] kicks = (type == PieceType.I) ? I_Kicks[stateFromTo] : JLSTZ_Kicks[stateFromTo];
+
         return (type == PieceType.I) ? I_Kicks[stateFromTo] : JLSTZ_Kicks[stateFromTo];
     }
 
