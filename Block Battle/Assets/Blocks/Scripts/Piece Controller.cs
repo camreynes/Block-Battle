@@ -25,6 +25,9 @@ public class PieceController : MonoBehaviour
 
     private bool _recentlyMoved = false;
     private bool _forceHardDrop = false;
+    private bool _stageSet = false; // Used for stage presets
+
+    private List<Vector2Int[]> _stagePreset = new List<Vector2Int[]>(); // stage presets if saved
 
     private Coroutine _fallRoutine;
 

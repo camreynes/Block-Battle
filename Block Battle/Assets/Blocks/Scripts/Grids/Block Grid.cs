@@ -55,19 +55,10 @@ public class BlockGrid : MonoBehaviour
                 GameObject block = grid._blocksInGrid[r, c];
                 if (block != null)
                 {
-                    if (block.GetComponent<Block>().GetBlockStatus())
-                    {
-                        str += "1";
-                    }
-                    else
-                    {
-                        str += "0";
-                    }
+                    if (block.GetComponent<Block>().GetBlockStatus()) str += "1";
+                    else str += "0";
                 }
-                else
-                {
-                    str += "_";
-                }
+                else str += "_";
             }
             str += "\n";
         }
