@@ -5,17 +5,17 @@ using UnityEngine;
 public class PieceScript : MonoBehaviour
 {
     [SerializeField] protected GameObject _blockPrefab;
-    PieceType _pieceType;
+    protected PieceType _pieceType;
 
     private BlockGrid _blockGrid;
     private GameObject[] _blocks;
-
+    
     private Vector2Int[] _positions;
     private int _currentRotation = 0; // 0 = 0 spawn/0 degrees, 1 = right/90 degrees, 2 = reverse/180 degrees, 3 = left/270 degrees
 
     public void SetGrid(BlockGrid grid)
     {
-        Debug.Log($"Setting grid to {grid.gameObject.name}");
+        //Debug.Log($"Setting grid to {grid.gameObject.name}");
         _blockGrid = grid;
     }
 
@@ -187,10 +187,10 @@ public class PieceScript : MonoBehaviour
         {
             rotatedPositions[i] = new Vector2Int[_blocks.Length];
             rotatedPositions[0].CopyTo(rotatedPositions[i], 0);
-            PieceController.PrintVector2Array(rotatedPositions[i], $"before movement at {i}");
-            Debug.Log($"KICKTABLE OFFSET: {SRSMoveOffset[i].x} {SRSMoveOffset[i].y}");
+            //PieceController.PrintVector2Array(rotatedPositions[i], $"before movement at {i}");
+            //Debug.Log($"KICKTABLE OFFSET: {SRSMoveOffset[i].x} {SRSMoveOffset[i].y}");
             rotatedPositions[i] = CreateOffsetVectors(SRSMoveOffset[i].x, SRSMoveOffset[i].y, rotatedPositions[i]);
-            PieceController.PrintVector2Array(rotatedPositions[i], $"after movement at {i}");
+            //PieceController.PrintVector2Array(rotatedPositions[i], $"after movement at {i}");
         }
 
         // Try all rotations, roatte if possible
@@ -198,8 +198,8 @@ public class PieceScript : MonoBehaviour
         {
             if (CheckBlockLocations(rotatedPositions[i]))
             {
-                Debug.Log($"Rotating with i = {i}");
-                PieceController.PrintVector2Array(rotatedPositions[i]);
+                //Debug.Log($"Rotating with i = {i}");
+                //PieceController.PrintVector2Array(rotatedPositions[i]);
                 NullGridLocations();
                 AssignNewLocations(rotatedPositions[i]);
                 _currentRotation = (_currentRotation == 0 && !isClockwise) ? 3 : (_currentRotation + (isClockwise ? 1 : -1)) % 4;
@@ -238,13 +238,23 @@ public class PieceScript : MonoBehaviour
     {
         for (int i = 0; i < _blocks.Length; i++)
         {
-            //Debug.Log(i);
-            //if (_blocks[i] == null)
-            //    Debug.Log("is null");
-            //else
-            //    Debug.Log($"Setting block at {_blocks[i].GetComponent<Block>().GetPosition()} to inactive");
-            _blocks[i].GetComponent<Block>().SetBlockStatus(false);
+            Block currBlock = _blocks[i].GetComponent<Block>();
+            currBlock.SetBlockStatus(false);
+            Global.scenePreset.Add(new Vector2Int((int)_positions[i].x, (int)_positions[i].y));
         }
+    }
+
+    // -----------------------SAVING-----------------------
+
+    // -----------------------DEBUGGING-----------------------
+    public void PrintScene()
+    {
+        Debug.Log($"Scene Saved Blocks, {Global.scenePreset.Count}");
+        foreach (Vector2Int position in Global.scenePreset)
+        {
+            Debug.Log($"{position}");
+        }
+        SaveUtility.Save(Global.scenePreset);
     }
 
 }

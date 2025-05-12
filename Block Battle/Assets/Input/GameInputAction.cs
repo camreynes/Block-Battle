@@ -8,5 +8,6 @@ public enum GameInputAction
     ROTATE_CW,
     ROTATE_CCW,
     HOLD,
-    PAUSE
+    PAUSE,
+    SAVE_SCENE
 }

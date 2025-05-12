@@ -23,7 +23,8 @@ public static class TetrixInputManager
         [GameInputAction.ROTATE_CW] = c => c.PlayerActions.RotateCW,
         [GameInputAction.ROTATE_CCW] = c => c.PlayerActions.RotateCCW,
         [GameInputAction.HOLD] = c => c.PlayerActions.Hold,
-        [GameInputAction.PAUSE] = c => c.PlayerActions.Pause
+        [GameInputAction.PAUSE] = c => c.PlayerActions.Pause,
+        [GameInputAction.SAVE_SCENE] = c => c.PlayerActions.SaveScene
     };
 
     public static void RegisterPlayer(int playerID, PlayerInput input)

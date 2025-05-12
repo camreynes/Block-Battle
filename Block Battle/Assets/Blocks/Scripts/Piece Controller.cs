@@ -17,15 +17,13 @@ public class PieceController : MonoBehaviour
     private PieceScript _currentPiece;
     private int _playerId = 0; // Player ID for input mapping, will make dynamic later
 
-    public Vector2Int[] _initialPositions;
-
     private HoldState _holdLeft;
     private HoldState _holdRight;
     private HoldState _holdDown;
 
     private bool _recentlyMoved = false;
     private bool _forceHardDrop = false;
-    private bool _stageSet = false; // Used for stage presets
+    private bool _stagepreset = true;
 
     private List<Vector2Int[]> _stagePreset = new List<Vector2Int[]>(); // stage presets if saved
 
@@ -38,6 +36,24 @@ public class PieceController : MonoBehaviour
         _holdLeft = new HoldState(0.167f, 0.033f);
         _holdRight = new HoldState(0.167f, 0.033f);
         _holdDown = new HoldState(0.05f, 0.02f);
+    }
+
+    private void Start()
+    {
+        if (_stagepreset) {
+            Global.GetPreset();
+            GameObject pieceObj = Instantiate(_tetrominoPrefab[1]);
+            _currentPiece = pieceObj.GetComponent<PieceScript>();
+            _currentPiece.SetGrid(_grid);
+
+            Vector2Int[] initialPositions = Global.scenePreset.ToArray();
+            _currentPiece.SetPositions(initialPositions);
+            _currentPiece.SpawnBlocks(initialPositions);
+            _currentPiece.SetBlocksInactive();
+        }
+
+        SpawnPiece();
+        _fallRoutine = StartCoroutine(BlockFall());
     }
 
     // We use update to check for held keys
@@ -82,6 +98,10 @@ public class PieceController : MonoBehaviour
             _recentlyMoved = _currentPiece.TryRotateCW();
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerId))
             _recentlyMoved = _currentPiece.TryRotateCCW();
+
+        // PLAYER INPUTS - TESTING
+        if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerId))
+            _currentPiece.PrintScene();
     }
 
     // Function to set hold states, only needed for keys that can be presse (move left, right and down)
@@ -111,13 +131,6 @@ public class PieceController : MonoBehaviour
             _holdDown.StopHold();
     }
 
-    // Once inputs defined, we can start spawning pieces at an interval
-    void Start()
-    {
-        SpawnPiece();
-        _fallRoutine = StartCoroutine(BlockFall());
-    }
-
     private void SpawnPiece()
     {
         _forceHardDrop = false;
@@ -126,17 +139,15 @@ public class PieceController : MonoBehaviour
         GameObject pieceObj = null;
         pieceObj = Instantiate(_tetrominoPrefab[UnityEngine.Random.Range(1, 2)]);
         _currentPiece = pieceObj.GetComponent<PieceScript>();
-
         _currentPiece.SetGrid(_grid);
 
-        Vector2Int[] _initialPositions = _currentPiece.GetInitialPositions();
-        this._initialPositions = _initialPositions;
+        Vector2Int[] initialPositions = _currentPiece.GetInitialPositions();
         //Debug.Log($"Initial positions from PieceController:");
         //PrintVector2Array(_initialPositions);
 
-        _currentPiece.SetPositions(_initialPositions);
+        _currentPiece.SetPositions(initialPositions);
 
-        bool canSpawn = _currentPiece.CheckBlockLocations(this._initialPositions);
+        bool canSpawn = _currentPiece.CheckBlockLocations(initialPositions);
         if (!canSpawn)
         {
             //Debug.Log("Can not spawn block");
@@ -145,8 +156,7 @@ public class PieceController : MonoBehaviour
         }
 
         //PrintVector2Array(_initialPositions);
-
-        _currentPiece.SpawnBlocks(_initialPositions);
+        _currentPiece.SpawnBlocks(initialPositions);
     }
 
     private void HardDrop()
@@ -169,7 +179,6 @@ public class PieceController : MonoBehaviour
             }
 
             bool canMoveDown = _currentPiece.TestOffset(new Vector2Int(1, 0)); // Can we place below?
-            float timer = 0;
 
             if (canMoveDown) // Normal falling, using a timer here instead of waitForSeconds so it can be interrupted
             {

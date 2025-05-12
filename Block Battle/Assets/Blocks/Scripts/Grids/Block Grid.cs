@@ -31,7 +31,7 @@ public class BlockGrid : MonoBehaviour
         SpriteRenderer gridRenderer = gameObject.GetComponent<SpriteRenderer>();
         Bounds gridBounds = gridRenderer.bounds;
         _position = new Vector2(transform.position.x, transform.position.y); // Get the position of the grid
-        Debug.Log($"Grid position: {_position}");
+        //Debug.Log($"Grid position: {_position}");
 
         double width = gridBounds.size.x / 10;
         double height = gridBounds.size.y / 20;
@@ -43,7 +43,7 @@ public class BlockGrid : MonoBehaviour
         _playerID = playerID;
 
         scale = gameObject.transform.localScale;
-        Debug.Log($"Grid height: {height}, width: {width}");
+        //Debug.Log($"Grid height: {height}, width: {width}");
     }
 
     // Prints grid represented with 0s and 1s

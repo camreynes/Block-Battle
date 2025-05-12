@@ -162,6 +162,15 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""SaveScene"",
+                    ""type"": ""Button"",
+                    ""id"": ""b71078ea-8272-48da-abbd-c544440aa5ab"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -252,6 +261,17 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                     ""action"": ""Pause"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""86b7af2e-7374-45b6-a1ae-363c1ebaa37f"",
+                    ""path"": ""<Keyboard>/k"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SaveScene"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -268,6 +288,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         m_PlayerActions_RotateCCW = m_PlayerActions.FindAction("RotateCCW", throwIfNotFound: true);
         m_PlayerActions_Hold = m_PlayerActions.FindAction("Hold", throwIfNotFound: true);
         m_PlayerActions_Pause = m_PlayerActions.FindAction("Pause", throwIfNotFound: true);
+        m_PlayerActions_SaveScene = m_PlayerActions.FindAction("SaveScene", throwIfNotFound: true);
     }
 
     ~@TetrixControls()
@@ -356,6 +377,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_PlayerActions_RotateCCW;
     private readonly InputAction m_PlayerActions_Hold;
     private readonly InputAction m_PlayerActions_Pause;
+    private readonly InputAction m_PlayerActions_SaveScene;
     /// <summary>
     /// Provides access to input actions defined in input action map "PlayerActions".
     /// </summary>
@@ -399,6 +421,10 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "PlayerActions/Pause".
         /// </summary>
         public InputAction @Pause => m_Wrapper.m_PlayerActions_Pause;
+        /// <summary>
+        /// Provides access to the underlying input action "PlayerActions/SaveScene".
+        /// </summary>
+        public InputAction @SaveScene => m_Wrapper.m_PlayerActions_SaveScene;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -449,6 +475,9 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
             @Pause.started += instance.OnPause;
             @Pause.performed += instance.OnPause;
             @Pause.canceled += instance.OnPause;
+            @SaveScene.started += instance.OnSaveScene;
+            @SaveScene.performed += instance.OnSaveScene;
+            @SaveScene.canceled += instance.OnSaveScene;
         }
 
         /// <summary>
@@ -484,6 +513,9 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
             @Pause.started -= instance.OnPause;
             @Pause.performed -= instance.OnPause;
             @Pause.canceled -= instance.OnPause;
+            @SaveScene.started -= instance.OnSaveScene;
+            @SaveScene.performed -= instance.OnSaveScene;
+            @SaveScene.canceled -= instance.OnSaveScene;
         }
 
         /// <summary>
@@ -580,5 +612,12 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnPause(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "SaveScene" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnSaveScene(InputAction.CallbackContext context);
     }
 }

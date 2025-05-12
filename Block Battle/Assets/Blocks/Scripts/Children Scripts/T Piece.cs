@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class TPiece : PieceScript
 {
-    private PieceType _pieceType = PieceType.T;
+    PieceType _childPieceType = PieceType.T;
 
     /// Piece inital positions for the T piece
     private Vector2Int[] _initalPositions = new Vector2Int[4] {
@@ -73,7 +73,7 @@ public class TPiece : PieceScript
 
     public override PieceType GetPieceType()
     {
-        return _pieceType;
+        return _childPieceType;
     }
 
     protected override Vector2Int[] GetRotatedPositions(int stateFrom, bool isClockwise)
