@@ -175,31 +175,28 @@ public class PieceScript : MonoBehaviour
 
     private bool TryRotate(bool isClockwise)
     {
-
+        Debug.Log("----------------------------------------------");
+        Debug.Log("Original Positions");
+        PieceController.PrintVector2Array(_positions);
 
         //PieceController.PrintVector2Array(_positions);
         Vector2Int[][] rotatedPositions = new Vector2Int[5][];
         rotatedPositions[0] = CreateOffsetRotationVectors(isClockwise, _positions);
-
         Vector2Int[] SRSMoveOffset = KickTableManager.GetSRSKicks(_pieceType, _currentRotation, isClockwise);
-        //PieceController.PrintVector2Array(SRSMoveOffset);
         for (int i = 1; i < SRSMoveOffset.Length; i++) // For each SRSKick, add the offset to the original vector and rotatae
         {
             rotatedPositions[i] = new Vector2Int[_blocks.Length];
             rotatedPositions[0].CopyTo(rotatedPositions[i], 0);
-            //PieceController.PrintVector2Array(rotatedPositions[i], $"before movement at {i}");
-            //Debug.Log($"KICKTABLE OFFSET: {SRSMoveOffset[i].x} {SRSMoveOffset[i].y}");
             rotatedPositions[i] = CreateOffsetVectors(SRSMoveOffset[i].x, SRSMoveOffset[i].y, rotatedPositions[i]);
-            //PieceController.PrintVector2Array(rotatedPositions[i], $"after movement at {i}");
         }
 
         // Try all rotations, roatte if possible
         for (int i = 0; i < rotatedPositions.Length; i++)
         {
+            Debug.Log($"Checking Following Locations at {i}");
+            PieceController.PrintVector2Array(rotatedPositions[i]);
             if (CheckBlockLocations(rotatedPositions[i]))
             {
-                //Debug.Log($"Rotating with i = {i}");
-                //PieceController.PrintVector2Array(rotatedPositions[i]);
                 NullGridLocations();
                 AssignNewLocations(rotatedPositions[i]);
                 _currentRotation = (_currentRotation == 0 && !isClockwise) ? 3 : (_currentRotation + (isClockwise ? 1 : -1)) % 4;
@@ -247,14 +244,6 @@ public class PieceScript : MonoBehaviour
     // -----------------------SAVING-----------------------
 
     // -----------------------DEBUGGING-----------------------
-    public void PrintScene()
-    {
-        Debug.Log($"Scene Saved Blocks, {Global.scenePreset.Count}");
-        foreach (Vector2Int position in Global.scenePreset)
-        {
-            Debug.Log($"{position}");
-        }
-        SaveUtility.Save(Global.scenePreset);
-    }
+    
 
 }

@@ -42,7 +42,7 @@ public class PieceController : MonoBehaviour
     {
         if (_stagepreset) {
             Global.GetPreset();
-            GameObject pieceObj = Instantiate(_tetrominoPrefab[1]);
+            GameObject pieceObj = Instantiate(_tetrominoPrefab[0]);
             _currentPiece = pieceObj.GetComponent<PieceScript>();
             _currentPiece.SetGrid(_grid);
 
@@ -101,8 +101,10 @@ public class PieceController : MonoBehaviour
 
         // PLAYER INPUTS - TESTING
         if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerId))
-            _currentPiece.PrintScene();
+            SaveScene();
     }
+
+    // -----------------------PRIVATE HELPERS-----------------------
 
     // Function to set hold states, only needed for keys that can be presse (move left, right and down)
     private void OnMoveStart(Vector2Int direction)
@@ -137,7 +139,7 @@ public class PieceController : MonoBehaviour
 
         //Debug.Log("Attempting to spawn Blocks");
         GameObject pieceObj = null;
-        pieceObj = Instantiate(_tetrominoPrefab[UnityEngine.Random.Range(1, 2)]);
+        pieceObj = Instantiate(_tetrominoPrefab[1]); //UnityEngine.Random.Range(1, 2)
         _currentPiece = pieceObj.GetComponent<PieceScript>();
         _currentPiece.SetGrid(_grid);
 
@@ -166,6 +168,8 @@ public class PieceController : MonoBehaviour
         _currentPiece?.SetBlocksInactive();
         _currentPiece = null;
     }
+
+    // -----------------------PRIVATE IENUMERATOR (AND HELPERS)-----------------------
 
     private IEnumerator BlockFall()
     {
@@ -237,6 +241,8 @@ public class PieceController : MonoBehaviour
         }
     }
 
+    // -----------------------PUBLIC METHODS-----------------------
+
     public void SetGrid(BlockGrid grid)
     {
         _grid = grid;
@@ -251,5 +257,11 @@ public class PieceController : MonoBehaviour
         }
         result += "]";
         Debug.Log(result);
+    }
+
+    public void SaveScene()
+    {
+        Debug.Log($"Scene Saved with {Global.scenePreset.Count} Blocks");
+        SaveUtility.Save(Global.scenePreset);
     }
 }
