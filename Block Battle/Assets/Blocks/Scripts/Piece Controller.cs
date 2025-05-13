@@ -23,9 +23,7 @@ public class PieceController : MonoBehaviour
 
     private bool _recentlyMoved = false;
     private bool _forceHardDrop = false;
-    private bool _stagepreset = true;
-
-    private List<Vector2Int[]> _stagePreset = new List<Vector2Int[]>(); // stage presets if saved
+    private bool _stagepreset = false;
 
     private Coroutine _fallRoutine;
 
@@ -139,7 +137,7 @@ public class PieceController : MonoBehaviour
 
         //Debug.Log("Attempting to spawn Blocks");
         GameObject pieceObj = null;
-        pieceObj = Instantiate(_tetrominoPrefab[1]); //UnityEngine.Random.Range(1, 2)
+        pieceObj = Instantiate(_tetrominoPrefab[0]); //UnityEngine.Random.Range(1, 2)
         _currentPiece = pieceObj.GetComponent<PieceScript>();
         _currentPiece.SetGrid(_grid);
 

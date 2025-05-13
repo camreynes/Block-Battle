@@ -30,16 +30,14 @@ public static class KickTableManager
     private static readonly Dictionary<(int, int), Vector2Int[]> I_Kicks = new()
     {
         { (0, 1),  new Vector2Int[] { new(0, 0), new(0, -2), new(0, 1), new(1, -2), new(-2, 1) } },
-        { (1, 0),  new Vector2Int[] { new(0, 0), new(0, 2), new(0, -1), new(-1, 2), new(2, -1) } },
-
-        { (1, 2),  new Vector2Int[] { new(0, 0), new(0, -1), new(0, 2), new(2, -1), new(-1, 2) } },
-        { (2, 1),  new Vector2Int[] { new(0, 0), new(0, 1), new(0, -2), new(-2, 1), new(1, -2) } },
-
+        { (1, 2),  new Vector2Int[] { new(0, 0), new(0, -1), new(0, 2), new(-2, -1), new(1, 2) } },
         { (2, 3),  new Vector2Int[] { new(0, 0), new(0, 2), new(0, -1), new(-1, 2), new(2, -1) } },
-        { (3, 2),  new Vector2Int[] { new(0, 0), new(0, -2), new(0, 1), new(1, -2), new(-2, 1) } },
-
         { (3, 0),  new Vector2Int[] { new(0, 0), new(0, 1), new(0, -2), new(-2, 1), new(1, -2) } },
-        { (0, 3),  new Vector2Int[] { new(0, 0), new(0, -1), new(0, 2), new(2, -1), new(-1, 2) } }
+
+        { (0, 3),  new Vector2Int[] { new(0, 0), new(0, 2), new(0, -1), new(-1, 2), new(2, -1) } },
+        { (1, 0),  new Vector2Int[] { new(0, 0), new(0, 1), new(0, -2), new(-2, 1), new(1, -2) } },
+        { (2, 1),  new Vector2Int[] { new(0, 0), new(0, -2), new(0, 1), new(1, -2), new(-2, 1) } },
+        { (3, 2),  new Vector2Int[] { new(0, 0), new(0, -1), new(0, 2), new(2, -1), new(-1, 2) } }
     };
 
     public static Vector2Int[] GetSRSKicks(PieceType type, int stateFrom, bool isClockwise)
