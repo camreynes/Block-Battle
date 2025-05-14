@@ -19,6 +19,7 @@ UserSettings/
 *.booproj
 *.svd
 
+
 # OS files
 .DS_Store
 Thumbs.db

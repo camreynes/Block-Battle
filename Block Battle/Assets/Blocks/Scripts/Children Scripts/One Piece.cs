@@ -8,7 +8,7 @@ public class OnePiece : PieceScript
 
     /// Piece inital positions for the T piece
     private Vector2Int[] _initalPositions = new Vector2Int[1] {
-        new Vector2Int(1, 4), // Pivot/center
+        new Vector2Int(4, 19), // Pivot/center
     };
 
 
