@@ -25,7 +25,7 @@ public class PieceScript : MonoBehaviour
     /// <param name="vectors">Vectors is a set of initial positions where the blocks will be spawned</param>
     public void SpawnBlocks(Vector2Int[] vectors)
     {
-        Debug.Log($"num blocks: {vectors.Length}");
+        //Debug.Log($"num blocks: {vectors.Length}");
         _pieceType = GetPieceType();
         int numBlocks = vectors.Length;
         _blocks = new GameObject[numBlocks];
@@ -34,7 +34,7 @@ public class PieceScript : MonoBehaviour
         // Iterate through each block, instantiating it, asigning a parent, making it active, initalizing it in array, and initalizing position
         for (int i = 0; i < numBlocks; i++)
         {
-            Debug.Log($"Spawning block {i} at {vectors[i]}");
+            //Debug.Log($"Spawning block {i} at {vectors[i]}");
             GameObject block = Instantiate(_blockPrefab);
             Block blockScript = block.GetComponent<Block>();
             blockScript.SetGrid(_blockGrid.gameObject);
@@ -176,9 +176,9 @@ public class PieceScript : MonoBehaviour
 
     private bool TryRotate(bool isClockwise)
     {
-        Debug.Log("----------------------------------------------");
-        Debug.Log("Original Positions");
-        PieceController.PrintVector2Array(_positions);
+        //Debug.Log("----------------------------------------------");
+        //Debug.Log("Original Positions");
+        //PieceController.PrintVector2Array(_positions);
 
         //PieceController.PrintVector2Array(_positions);
         Vector2Int[][] rotatedPositions = new Vector2Int[5][];
@@ -194,8 +194,8 @@ public class PieceScript : MonoBehaviour
         // Try all rotations, roatte if possible
         for (int i = 0; i < rotatedPositions.Length; i++)
         {
-            Debug.Log($"Checking Following Locations at {i}");
-            PieceController.PrintVector2Array(rotatedPositions[i]);
+            //Debug.Log($"Checking Following Locations at {i}");
+            //PieceController.PrintVector2Array(rotatedPositions[i]);
             if (CheckBlockLocations(rotatedPositions[i]))
             {
                 NullGridLocations();
@@ -215,9 +215,6 @@ public class PieceScript : MonoBehaviour
         {
             rotatedPositions[i] = new Vector2Int(positions[i].x + rotatedOffsets[i].x, positions[i].y + rotatedOffsets[i].y);
         }
-        PieceController.PrintVector2Array(_positions, "Original: ");
-        PieceController.PrintVector2Array(rotatedOffsets, "Rotated Offsets: ");
-        PieceController.PrintVector2Array(rotatedPositions, "Rotated Potsitions: ");
         return rotatedPositions;
     }
 

@@ -16,28 +16,33 @@ public static class KickTableManager
     private static readonly Dictionary<(int, int), Vector2Int[]> JLSTZ_Kicks = new()
     {
         { (0, 1),  new Vector2Int[] { new(0, 0), new(-1, 0), new(-1, 1), new(0, -2), new(-1, -2) } },
-        { (1, 2),  new Vector2Int[] { new(0, 0), new(1, 0), new(1, -1), new(0, 2), new(1, 2) } },
-        { (2, 3),  new Vector2Int[] { new(0, 0), new(1, 0), new(1, 1), new(0, -2), new(1, -2) } },
-        { (3, 0),  new Vector2Int[] { new(0, 0), new(-1, 0), new(-1, -1), new(0, 2), new(-1, 2) } },
-
-        { (0, 3),  new Vector2Int[] { new(0, 0), new(1, 0), new(1, -1), new(0, -2), new(1, -2) } },
         { (1, 0),  new Vector2Int[] { new(0, 0), new(1, 0), new(1, -1), new(0, 2), new(1, 2) } },
+
+        { (1, 2),  new Vector2Int[] { new(0, 0), new(1, 0), new(1, -1), new(0, 2), new(1, 2) } },
         { (2, 1),  new Vector2Int[] { new(0, 0), new(-1, 0), new(-1, 1), new(0, -2), new(-1, -2) } },
-        { (3, 2),  new Vector2Int[] { new(0, 0), new(-1, 0), new(-1, -1), new(0, 2), new(-1, 2) } }
+
+        { (2, 3),  new Vector2Int[] { new(0, 0), new(1, 0), new(1, 1), new(0, -2), new(1, -2) } },
+        { (3, 2),  new Vector2Int[] { new(0, 0), new(-1, 0), new(-1, -1), new(0, 2), new(-1, 2) } },
+
+        { (3, 0),  new Vector2Int[] { new(0, 0), new(-1, 0), new(-1, -1), new(0, 2), new(-1, 2) } },
+        { (0, 3),  new Vector2Int[] { new(0, 0), new(1, 0), new(1, 1), new(0, -2), new(1, -2) } }
     };
 
     // SRS kick data for I-piece
     private static readonly Dictionary<(int, int), Vector2Int[]> I_Kicks = new()
     {
-        { (0, 1),  new Vector2Int[] { new(0, 0), new(0, -2), new(0, 1), new(1, -2), new(-2, 1) } },
-        { (1, 2),  new Vector2Int[] { new(0, 0), new(0, -1), new(0, 2), new(-2, -1), new(1, 2) } },
-        { (2, 3),  new Vector2Int[] { new(0, 0), new(0, 2), new(0, -1), new(-1, 2), new(2, -1) } },
-        { (3, 0),  new Vector2Int[] { new(0, 0), new(0, 1), new(0, -2), new(-2, 1), new(1, -2) } },
+        { (0, 1),  new Vector2Int[] { new(0, 0), new(-2, 0), new(1, 0), new(-2, -1), new(1, 2) } },
+        { (1, 0),  new Vector2Int[] { new(0, 0), new(2, 0), new(-1, 0), new(2, 1), new(-1, -2) } },
 
-        { (0, 3),  new Vector2Int[] { new(0, 0), new(0, 2), new(0, -1), new(-1, 2), new(2, -1) } },
-        { (1, 0),  new Vector2Int[] { new(0, 0), new(0, 1), new(0, -2), new(-2, 1), new(1, -2) } },
-        { (2, 1),  new Vector2Int[] { new(0, 0), new(0, -2), new(0, 1), new(1, -2), new(-2, 1) } },
-        { (3, 2),  new Vector2Int[] { new(0, 0), new(0, -1), new(0, 2), new(2, -1), new(-1, 2) } }
+        { (1, 2),  new Vector2Int[] { new(0, 0), new(-1, 0), new(2, 0), new(-1, 2), new(2, -1) } },
+        { (2, 1),  new Vector2Int[] { new(0, 0), new(1, 0), new(-2, 0), new(1, -2), new(-2, 1) } },
+
+        { (2, 3),  new Vector2Int[] { new(0, 0), new(2, 0), new(-1, 0), new(2, 1), new(-1, -2) } },
+        { (3, 2),  new Vector2Int[] { new(0, 0), new(-2, 0), new(1, 0), new(-2, -1), new(1, 2) } },
+
+        { (3, 0),  new Vector2Int[] { new(0, 0), new(1, 0), new(-2, 0), new(1, -2), new(-2, 1) } },
+        { (0, 3),  new Vector2Int[] { new(0, 0), new(-1, 0), new(2, 0), new(-1, 2), new(2, -1) } }
+
     };
 
     public static Vector2Int[] GetSRSKicks(PieceType type, int stateFrom, bool isClockwise)
@@ -45,7 +50,7 @@ public static class KickTableManager
         int stateTo = (stateFrom == 0 && !isClockwise) ? 3 : stateFrom - 1; // Fixes the 0 case
         (int, int) stateFromTo = (stateFrom, isClockwise ? Math.Abs((stateFrom + 1) % 4) : stateTo);
 
-        Debug.Log($"KickTableManager: Getting SRS kicks for {type} from {stateFrom} to {stateTo}");
+        //Debug.Log($"KickTableManager: Getting SRS kicks for {type} from {stateFrom} to {stateTo}");
         Vector2Int[] kicks = (type == PieceType.I) ? I_Kicks[stateFromTo] : JLSTZ_Kicks[stateFromTo];
 
         return (type == PieceType.I) ? I_Kicks[stateFromTo] : JLSTZ_Kicks[stateFromTo];

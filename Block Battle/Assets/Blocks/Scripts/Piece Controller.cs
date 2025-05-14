@@ -100,7 +100,7 @@ public class PieceController : MonoBehaviour
         // PLAYER INPUTS - TESTING
         if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerId)) {
             BlockGrid.PrintGrid(_grid);
-            SaveScene();
+            //SaveScene();
         }
     }
 
@@ -161,7 +161,6 @@ public class PieceController : MonoBehaviour
 
         //PrintVector2Array(_initialPositions);
         _currentPiece.SpawnBlocks(initialPositions);
-        Debug.Log("spawning piece no errors");
     }
 
     private void HardDrop()

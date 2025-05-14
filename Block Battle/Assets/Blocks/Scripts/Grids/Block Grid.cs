@@ -94,7 +94,7 @@ public class BlockGrid : MonoBehaviour
     public bool CheckSpace(int x, int y)
     {
         // Check if coordinates are out of bounds 
-        if (x < 0 || x > 9 || y < 0 || y > _maxHieght)
+        if (x < 0 || x > 9 || y < 0 || y > _maxHieght-1)
         { // Check if the coordinates are out of bounds}
             //Debug.Log($"Coordinates {x}, {y} are out of bounds");
             return false;
