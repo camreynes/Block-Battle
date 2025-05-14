@@ -25,6 +25,7 @@ public class PieceScript : MonoBehaviour
     /// <param name="vectors">Vectors is a set of initial positions where the blocks will be spawned</param>
     public void SpawnBlocks(Vector2Int[] vectors)
     {
+        Debug.Log($"num blocks: {vectors.Length}");
         _pieceType = GetPieceType();
         int numBlocks = vectors.Length;
         _blocks = new GameObject[numBlocks];
@@ -33,7 +34,7 @@ public class PieceScript : MonoBehaviour
         // Iterate through each block, instantiating it, asigning a parent, making it active, initalizing it in array, and initalizing position
         for (int i = 0; i < numBlocks; i++)
         {
-            //Debug.Log($"Spawning block {i} at {vectors[i]}");
+            Debug.Log($"Spawning block {i} at {vectors[i]}");
             GameObject block = Instantiate(_blockPrefab);
             Block blockScript = block.GetComponent<Block>();
             blockScript.SetGrid(_blockGrid.gameObject);
@@ -76,7 +77,7 @@ public class PieceScript : MonoBehaviour
     {
         while (true)
         {
-            if (!TryMovePiece(new Vector2Int(1, 0))) break;
+            if (!TryMovePiece(new Vector2Int(0, -1))) break;
         }
     }
 
@@ -214,8 +215,9 @@ public class PieceScript : MonoBehaviour
         {
             rotatedPositions[i] = new Vector2Int(positions[i].x + rotatedOffsets[i].x, positions[i].y + rotatedOffsets[i].y);
         }
-        //Debug.Log($"Initial Positions: {_positions}");
-        //Debug.Log($"Rotation Vectors: {rotatedOffsets}");
+        PieceController.PrintVector2Array(_positions, "Original: ");
+        PieceController.PrintVector2Array(rotatedOffsets, "Rotated Offsets: ");
+        PieceController.PrintVector2Array(rotatedPositions, "Rotated Potsitions: ");
         return rotatedPositions;
     }
 

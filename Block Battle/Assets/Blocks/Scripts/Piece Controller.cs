@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 // Class that handles piece spawning, roations, movements, etc.
 public class PieceController : MonoBehaviour
 {
-    [SerializeField] private GameObject[] _tetrominoPrefab = new GameObject[2];
+    [SerializeField] private GameObject[] _tetrominoPrefab;
     [SerializeField] protected BlockGrid _grid;
     private float _timeToFall = 999999.8f;
     private float _lockDelay = .5f;
@@ -40,7 +40,7 @@ public class PieceController : MonoBehaviour
     {
         if (_stagepreset) {
             Global.GetPreset();
-            GameObject pieceObj = Instantiate(_tetrominoPrefab[0]);
+            GameObject pieceObj = Instantiate(_tetrominoPrefab[1]);
             _currentPiece = pieceObj.GetComponent<PieceScript>();
             _currentPiece.SetGrid(_grid);
 
@@ -66,27 +66,27 @@ public class PieceController : MonoBehaviour
         bool downHeld = _holdDown.IsHolding;
 
         if (leftHeld && !rightHeld && _holdLeft.ShouldRepeat())
-            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(0, -1));
+            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(-1, 0));
         else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
-            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(0, 1));
-        if (downHeld && _holdDown.ShouldRepeat())
             _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(1, 0));
+        if (downHeld && _holdDown.ShouldRepeat())
+            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(0, -1));
 
         // PLAYER INPUTS - MOVEMENT
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, _playerId))
-            OnMoveStart(new Vector2Int(0, -1));
+            OnMoveStart(new Vector2Int(-1, 0));
         if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerId).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2Int(0, -1));
+            OnMoveEnd(new Vector2Int(-1, -0));
 
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerId))
-            OnMoveStart(new Vector2Int(0, 1));
+            OnMoveStart(new Vector2Int(1, 0));
         if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, _playerId).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2Int(0, 1));
+            OnMoveEnd(new Vector2Int(1, 0));
 
         if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, _playerId))
-            OnMoveStart(new Vector2Int(1, 0));
+            OnMoveStart(new Vector2Int(0, -1));
         if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, _playerId).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2Int(1, 0));
+            OnMoveEnd(new Vector2Int(0, -1));
 
         if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerId))
             HardDrop();
@@ -98,8 +98,10 @@ public class PieceController : MonoBehaviour
             _recentlyMoved = _currentPiece.TryRotateCCW();
 
         // PLAYER INPUTS - TESTING
-        if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerId)) {
+            BlockGrid.PrintGrid(_grid);
             SaveScene();
+        }
     }
 
     // -----------------------PRIVATE HELPERS-----------------------
@@ -110,11 +112,11 @@ public class PieceController : MonoBehaviour
         //Debug.Log($"Move started: {direction}");
 
         // Remember x and y are reffered to as poistions in the array, not unity coordinates
-        if (direction.y < 0)
+        if (direction.x < 0)
             _holdLeft.StartHold();
-        else if (direction.y > 0)
-            _holdRight.StartHold();
         else if (direction.x > 0)
+            _holdRight.StartHold();
+        else if (direction.y < 0)
             _holdDown.StartHold();
         _recentlyMoved = true;
     }
@@ -123,13 +125,15 @@ public class PieceController : MonoBehaviour
     private void OnMoveEnd(Vector2Int direction)
     {
         //Debug.Log($"Move ended: {direction}");
-        if (direction.y < 0)
+        if (direction.x < 0)
             _holdLeft.StopHold();
-        else if (direction.y > 0)
-            _holdRight.StopHold();
         else if (direction.x > 0)
+            _holdRight.StopHold();
+        else if (direction.y < 0)
             _holdDown.StopHold();
     }
+
+    // -----------------------SPAWN PIECE-----------------------
 
     private void SpawnPiece()
     {
@@ -157,6 +161,7 @@ public class PieceController : MonoBehaviour
 
         //PrintVector2Array(_initialPositions);
         _currentPiece.SpawnBlocks(initialPositions);
+        Debug.Log("spawning piece no errors");
     }
 
     private void HardDrop()
@@ -217,7 +222,7 @@ public class PieceController : MonoBehaviour
 
         while (timer < currentMaxtime && !_forceHardDrop)
         {
-            Debug.Log(timer);
+            //Debug.Log(timer);
             if (_recentlyMoved && !newMovePossible)
             {
                 newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(1, 0));

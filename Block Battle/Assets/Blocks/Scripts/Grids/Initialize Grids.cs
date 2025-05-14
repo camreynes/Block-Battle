@@ -6,7 +6,7 @@ public class InitializeGrids : MonoBehaviour
     [SerializeField] private GameObject _gridBackgroundPrefab;
     [SerializeField] private GameObject _pieceController;
 
-    private Vector3 _defaultGridPos = new Vector3(-2.247f, 4.49f); // Default position for the grid
+    private Vector3 _defaultGridPos = new Vector3(-2.247f, -4.49f); // Default position for the grid
     private Vector3 _defaultGridScale = new Vector3(2.809f, 2.809f); // Default scale for the grid
 
     //private Vector3 _defaultBlockPos = new Vector3(); // Default position for the block
