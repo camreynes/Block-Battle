@@ -23,7 +23,7 @@ public class PieceController : MonoBehaviour
 
     private bool _recentlyMoved = false;
     private bool _forceHardDrop = false;
-    private bool _stagepreset = false;
+    [SerializeField] private bool _stagePreset = false;
 
     private Coroutine _fallRoutine;
 
@@ -38,7 +38,7 @@ public class PieceController : MonoBehaviour
 
     private void Start()
     {
-        if (_stagepreset) {
+        if (_stagePreset) {
             Global.GetPreset();
             GameObject pieceObj = Instantiate(_tetrominoPrefab[1]);
             _currentPiece = pieceObj.GetComponent<PieceScript>();
@@ -99,8 +99,7 @@ public class PieceController : MonoBehaviour
 
         // PLAYER INPUTS - TESTING
         if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerId)) {
-            BlockGrid.PrintGrid(_grid);
-            //SaveScene();
+            SaveScene();
         }
     }
 

@@ -247,15 +247,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 674914248436578811, guid: c11abf8f67f7e5541b907d448377a5ed, type: 3}
       propertyPath: m_Color.b
-      value: 0.27358478
+      value: 0.9082017
       objectReference: {fileID: 0}
     - target: {fileID: 674914248436578811, guid: c11abf8f67f7e5541b907d448377a5ed, type: 3}
       propertyPath: m_Color.g
-      value: 0.9879838
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 674914248436578811, guid: c11abf8f67f7e5541b907d448377a5ed, type: 3}
       propertyPath: m_Color.r
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 674914248436578811, guid: c11abf8f67f7e5541b907d448377a5ed, type: 3}
       propertyPath: m_SortingOrder
@@ -263,7 +263,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7377928618032614626, guid: c11abf8f67f7e5541b907d448377a5ed, type: 3}
       propertyPath: m_Name
-      value: Yellow_Default_Block
+      value: Blue_Default_Block
       objectReference: {fileID: 0}
     - target: {fileID: 8779685890429724170, guid: c11abf8f67f7e5541b907d448377a5ed, type: 3}
       propertyPath: m_LocalScale.x
@@ -531,11 +531,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _tetrominoPrefab:
-  - {fileID: 88517300}
   - {fileID: 2007200738}
+  - {fileID: 88517300}
   - {fileID: 1401205108}
   - {fileID: 1482041100}
   _grid: {fileID: 1473212626}
+  _stagepreset: 0
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -843,7 +844,7 @@ Transform:
   m_GameObject: {fileID: 1358589552}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -15.38741, y: 4.364677, z: 0}
+  m_LocalPosition: {x: -15.38741, y: -5, z: 0}
   m_LocalScale: {x: 2.809, y: 2.809, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1118,7 +1119,7 @@ Transform:
   m_GameObject: {fileID: 1473212623}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -15.387407, y: 4.365337, z: 0}
+  m_LocalPosition: {x: -15.387407, y: -5, z: 0}
   m_LocalScale: {x: 2.809, y: 2.809, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

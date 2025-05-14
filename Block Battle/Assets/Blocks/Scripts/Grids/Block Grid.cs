@@ -18,6 +18,7 @@ public class BlockGrid : MonoBehaviour
     public Vector2 scale = new Vector2(0,0);
 
     private static int _maxHieght = 40;
+    private static readonly int _maxWidth = 10;
     private GameObject[,] _blocksInGrid = new GameObject[_maxHieght, 10]; // Initialize array of gameObjects (cubes) representning the filled array
 
     //private void Awake()
@@ -34,8 +35,11 @@ public class BlockGrid : MonoBehaviour
         _position = new Vector2(transform.position.x, transform.position.y); // Get the position of the grid
         //Debug.Log($"Grid position: {_position}");
 
-        double width = gridBounds.size.x / 10;
-        double height = gridBounds.size.y / 20;
+        _rows = _maxHieght;
+        _cols = _maxWidth;
+
+        double width = gridBounds.size.x / _maxWidth;
+        double height = gridBounds.size.y / _maxHieght;
         // These values should match but do not due to Unity
 
         // Initialize private widh and height (We do this in case we use a custom grid rather than the default 20x10 one)

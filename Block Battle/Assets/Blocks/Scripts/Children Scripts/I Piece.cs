@@ -8,10 +8,10 @@ public class IPiece : PieceScript
 
     // Piece inital positions for the I piece
     private Vector2Int[] _initialPositions = new Vector2Int[4] {
-        new Vector2Int(3, 19), 
-        new Vector2Int(4, 19), 
-        new Vector2Int(5, 19), 
-        new Vector2Int(6, 19)
+        new Vector2Int(3, 18), 
+        new Vector2Int(4, 18), 
+        new Vector2Int(5, 18), 
+        new Vector2Int(6, 18)
     };
 
     // 0 = 0 spawn/0 degrees, 1 = right/90 degrees, 2 = reverse/180 degrees, 3 = left/270 degrees
