@@ -6,7 +6,7 @@ public class OnePiece : PieceScript
 {
     PieceType _childPieceType = PieceType.Preset;
 
-    /// Piece inital positions for the T piece
+    /// Piece inital positions for the one/singular piece L:
     private Vector2Int[] _initalPositions = new Vector2Int[1] {
         new Vector2Int(4, 19), // Pivot/center
     };
@@ -27,7 +27,4 @@ public class OnePiece : PieceScript
     {
         return new Vector2Int[] { new Vector2Int(0, 0) };
     }
-
-    // ROTAION METHODS
-
 }

@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ZPiece : PieceScript
+public class JPiece : PieceScript
 {
-    PieceType _childPieceType = PieceType.Z;
+    PieceType _childPieceType = PieceType.J;
 
-    // Piece inital positions for the Z piece
+    // Piece inital positions for the J piece
     private Vector2Int[] _initialPositions = new Vector2Int[4] {
         new Vector2Int(4, 18), // Pivot/center
-        new Vector2Int(4, 19), // Top of pivot
+        new Vector2Int(3, 18), // Left of pivot
         new Vector2Int(3, 19), // Top Left of pivot
         new Vector2Int(5, 18) // Right of pivot
     };
@@ -18,36 +18,36 @@ public class ZPiece : PieceScript
 
     //------------------CLOCKWISE ROTATIONS------------------
     public static readonly Vector2Int[] _rotate0to1 = new Vector2Int[4] {
-        new Vector2Int(0, 0), new Vector2Int(1, -1), new Vector2Int(2, 0), new Vector2Int(-1, -1)
+        new Vector2Int(0, 0), new Vector2Int(1, -1), new Vector2Int(0, -2), new Vector2Int(1, 1)
     };
 
     public static readonly Vector2Int[] _rotate1to2 = new Vector2Int[4] {
-        new Vector2Int(0, 0), new Vector2Int(-1, -1), new Vector2Int(0, -2), new Vector2Int(-1, 1)
+        new Vector2Int(0, 0), new Vector2Int(-1, -1), new Vector2Int(-2, 0), new Vector2Int(1, -1)
     };
 
     public static readonly Vector2Int[] _rotate2to3 = new Vector2Int[4] {
-        new Vector2Int(0, 0), new Vector2Int(-1, 1), new Vector2Int(-2, 0), new Vector2Int(1, 1)
+        new Vector2Int(0, 0), new Vector2Int(-1, 1), new Vector2Int(0, 2), new Vector2Int(-1, -1)
     };
 
     public static readonly Vector2Int[] _rotate3to0 = new Vector2Int[4] {
-        new Vector2Int(0, 0), new Vector2Int(1, 1), new Vector2Int(0, 2), new Vector2Int(1, -1)
+        new Vector2Int(0, 0), new Vector2Int(1, 1), new Vector2Int(2, 0), new Vector2Int(-1, 1)
     };
 
     //------------------CCW ROTATIONS (I used to use Vector2 subtraction to subtract but decided to manually add tables O(N) > O(1))------------------
     public static readonly Vector2Int[] _rotate0to3 = new Vector2Int[4] {
-        new Vector2Int(0, 0), new Vector2Int(-1, -1), new Vector2Int(0, -2), new Vector2Int(-1, 1)
+        new Vector2Int(0, 0), new Vector2Int(-1, -1), new Vector2Int(-2, 0), new Vector2Int(1, -1)
     };
 
     public static readonly Vector2Int[] _rotate1to0 = new Vector2Int[4] {
-        new Vector2Int(0, 0), new Vector2Int(-1, 1), new Vector2Int(-2, 0), new Vector2Int(1, 1)
+        new Vector2Int(0, 0), new Vector2Int(-1, 1), new Vector2Int(0, 2), new Vector2Int(-1, -1)
     };
 
     public static readonly Vector2Int[] _rotate2to1 = new Vector2Int[4] {
-        new Vector2Int(0, 0), new Vector2Int(1, 1), new Vector2Int(0, 2), new Vector2Int(1, -1)
+        new Vector2Int(0, 0), new Vector2Int(1, 1), new Vector2Int(2, 0), new Vector2Int(-1, 1)
     };
 
     public static readonly Vector2Int[] _rotate3to2 = new Vector2Int[4] {
-        new Vector2Int(0, 0), new Vector2Int(1, -1), new Vector2Int(2, 0), new Vector2Int(-1, -1)
+        new Vector2Int(0, 0), new Vector2Int(1, -1), new Vector2Int(0, -2), new Vector2Int(1, 1)
     };
 
 

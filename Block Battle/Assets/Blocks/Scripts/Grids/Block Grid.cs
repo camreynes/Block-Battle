@@ -17,8 +17,9 @@ public class BlockGrid : MonoBehaviour
 
     public Vector2 scale = new Vector2(0,0);
 
-    private static int _maxHieght = 20;
-    private GameObject[,] _blocksInGrid = new GameObject[_maxHieght, 10]; // Initialize array of gameObjects (cubes) representning the filled array
+    private int _maxHieght = 20;
+    private int _spaceUsed = 0; // Tracks the top most block being used
+    private GameObject[,] _blocksInGrid = new GameObject[20, 10]; // Initialize array of gameObjects (cubes) representning the filled array
 
     //private void Awake()
     //{
@@ -52,12 +53,12 @@ public class BlockGrid : MonoBehaviour
     }
 
     // Prints grid represented with 0s and 1s
-    public static void PrintGrid(BlockGrid grid) {
+    public void PrintGrid() {
         String str = "";
         for (int r = _maxHieght - 1; r >= 0; r--) {
-            for (int c = 0; c < grid._cols; c++)
+            for (int c = 0; c < _cols; c++)
             {
-                GameObject block = grid._blocksInGrid[r, c];
+                GameObject block = _blocksInGrid[r, c];
                 if (block != null)
                 {
                     if (block.GetComponent<Block>().GetBlockStatus()) str += "1";
@@ -88,6 +89,8 @@ public class BlockGrid : MonoBehaviour
     public void SetBlockInGridArray(GameObject block, int x, int y)
     {
         _blocksInGrid[y, x] = block;
+        if (y >= _spaceUsed)
+            _spaceUsed = y;
     }
 
     // Method to check if space is avaiable based on offset, long method for debug atm

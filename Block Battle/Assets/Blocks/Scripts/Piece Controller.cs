@@ -179,7 +179,7 @@ public class PieceController : MonoBehaviour
             if (_currentPiece == null)
             {
                 SpawnPiece();
-                yield return null; // wait one frame to ensure full setup
+                yield return .05;
                 continue;
             }
 
