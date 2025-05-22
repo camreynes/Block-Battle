@@ -131,7 +131,7 @@ public class PieceScript : MonoBehaviour
 
     protected virtual Vector2Int[] GetRotatedPositions(int stateFrom, bool isClockwise)
     {
-        return new Vector2Int[0]; // default to empty
+        return new Vector2Int[_blocks.Length]; // default to empty
     }
 
     // -----------------------MOVING BLOCKS HELPERS-----------------------
