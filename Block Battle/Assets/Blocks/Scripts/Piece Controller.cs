@@ -8,8 +8,12 @@ using UnityEngine.InputSystem;
 // Class that handles piece spawning, roations, movements, etc.
 public class PieceController : MonoBehaviour
 {
+    
     [SerializeField] private GameObject[] _tetrominoPrefab;
     [SerializeField] protected BlockGrid _grid;
+
+    private List<GameObject> _pieceOrder = new List<GameObject>();
+
     private float _timeToFall = 999999.8f;
     private float _lockDelay = .5f;
     private float _maxLockDelay = 1.5f;
@@ -25,6 +29,11 @@ public class PieceController : MonoBehaviour
     private bool _forceHardDrop = false;
     [SerializeField] private bool _stagePreset = false;
 
+    private static readonly Vector2Int LEFT = new Vector2Int(-1, 0);
+    private static readonly Vector2Int RIGHT = new Vector2Int(1, 0);
+    private static readonly Vector2Int DOWN = new Vector2Int(0, -1);
+
+
     private Coroutine _fallRoutine;
 
     // On Awake(), we define player inputs
@@ -38,7 +47,7 @@ public class PieceController : MonoBehaviour
 
     private void Start()
     {
-        if (_stagePreset) {
+        if (_stagePreset) {  // Special conditions if we are using a preset stage
             Global.GetPreset();
             GameObject pieceObj = Instantiate(_tetrominoPrefab[1]);
             _currentPiece = pieceObj.GetComponent<PieceScript>();
@@ -57,6 +66,8 @@ public class PieceController : MonoBehaviour
     // We use update to check for held keys
     private void Update()
     {
+        if (_currentPiece == null)
+            return;
         //if (_recentlyMoved)
         //    Debug.Log("Moved");
         // HOLDING ACCELERATED MOVEMENT
@@ -66,11 +77,11 @@ public class PieceController : MonoBehaviour
         bool downHeld = _holdDown.IsHolding;
 
         if (leftHeld && !rightHeld && _holdLeft.ShouldRepeat())
-            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(-1, 0));
+            _recentlyMoved = _currentPiece.TryMovePiece(LEFT);
         else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
-            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(1, 0));
+            _recentlyMoved = _currentPiece.TryMovePiece(RIGHT);
         if (downHeld && _holdDown.ShouldRepeat())
-            _recentlyMoved = _currentPiece.TryMovePiece(new Vector2Int(0, -1));
+            _recentlyMoved = _currentPiece.TryMovePiece(DOWN);
 
         // PLAYER INPUTS - MOVEMENT
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, _playerId))
@@ -105,6 +116,28 @@ public class PieceController : MonoBehaviour
 
     // -----------------------PRIVATE HELPERS-----------------------
 
+    // -----------------------PIECE ORDER-----------------------
+
+
+    /// <summary> Creates a new order of pieces to be spawned. </summary>
+    private void CreateNewOrder()
+    {
+        List<GameObject> pieceList = new List<GameObject>();
+        for (int i = 0; i < _tetrominoPrefab.Length; i++) // Copy of list to determine randomized order
+        {
+            pieceList.Add(_tetrominoPrefab[i]);
+        }
+
+        for (int i = 0; i < _tetrominoPrefab.Length; i++) // Add to pieceOrder list
+        {
+            int randomIndex = UnityEngine.Random.Range(0, pieceList.Count);
+            _pieceOrder.Add(pieceList[randomIndex]);
+            pieceList.RemoveAt(randomIndex);
+        }
+    }
+
+    // -----------------------MOVE HELPERS-----------------------
+
     // Function to set hold states, only needed for keys that can be presse (move left, right and down)
     private void OnMoveStart(Vector2Int direction)
     {
@@ -137,16 +170,18 @@ public class PieceController : MonoBehaviour
     private void SpawnPiece()
     {
         _forceHardDrop = false;
-
-        //Debug.Log("Attempting to spawn Blocks");
         GameObject pieceObj = null;
-        pieceObj = Instantiate(_tetrominoPrefab[0]); //UnityEngine.Random.Range(1, 2)
+
+        // Random(ish) Piece Order
+        if (_pieceOrder.Count <= 2)
+            CreateNewOrder();
+
+        pieceObj = Instantiate(_pieceOrder[0]);
+        _pieceOrder.RemoveAt(0);
+
         _currentPiece = pieceObj.GetComponent<PieceScript>();
         _currentPiece.SetGrid(_grid);
-
         Vector2Int[] initialPositions = _currentPiece.GetInitialPositions();
-        //Debug.Log($"Initial positions from PieceController:");
-        //PrintVector2Array(_initialPositions);
 
         _currentPiece.SetPositions(initialPositions);
 
