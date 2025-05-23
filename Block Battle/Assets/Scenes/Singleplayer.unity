@@ -732,8 +732,8 @@ MonoBehaviour:
   - {fileID: 2007200738}
   - {fileID: 88517300}
   - {fileID: 1521176243}
-  - {fileID: 1482041100}
   _grid: {fileID: 1473212626}
+  _setPiece: 0
   _stagePreset: 0
 --- !u!1 &619394800
 GameObject:

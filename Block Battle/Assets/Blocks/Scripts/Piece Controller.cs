@@ -13,6 +13,7 @@ public class PieceController : MonoBehaviour
     [SerializeField] protected BlockGrid _grid;
 
     private List<GameObject> _pieceOrder = new List<GameObject>();
+    private List<GameObject> _tempPieceList = new List<GameObject>();
 
     private float _timeToFall = 999999.8f;
     private float _lockDelay = .5f;
@@ -27,6 +28,7 @@ public class PieceController : MonoBehaviour
 
     private bool _recentlyMoved = false;
     private bool _forceHardDrop = false;
+    [SerializeField] private bool _setPiece = false; // Used to determine if we are using only one hardset piece
     [SerializeField] private bool _stagePreset = false;
 
     private static readonly Vector2Int LEFT = new Vector2Int(-1, 0);
@@ -122,17 +124,18 @@ public class PieceController : MonoBehaviour
     /// <summary> Creates a new order of pieces to be spawned. </summary>
     private void CreateNewOrder()
     {
-        List<GameObject> pieceList = new List<GameObject>();
+        _tempPieceList.Clear();
+
         for (int i = 0; i < _tetrominoPrefab.Length; i++) // Copy of list to determine randomized order
         {
-            pieceList.Add(_tetrominoPrefab[i]);
+            _tempPieceList.Add(_tetrominoPrefab[i]);
         }
 
         for (int i = 0; i < _tetrominoPrefab.Length; i++) // Add to pieceOrder list
         {
-            int randomIndex = UnityEngine.Random.Range(0, pieceList.Count);
-            _pieceOrder.Add(pieceList[randomIndex]);
-            pieceList.RemoveAt(randomIndex);
+            int randomIndex = UnityEngine.Random.Range(0, _tempPieceList.Count);
+            _pieceOrder.Add(_tempPieceList[randomIndex]);
+            _tempPieceList.RemoveAt(randomIndex);
         }
     }
 
@@ -176,8 +179,16 @@ public class PieceController : MonoBehaviour
         if (_pieceOrder.Count <= 2)
             CreateNewOrder();
 
-        pieceObj = Instantiate(_pieceOrder[0]);
-        _pieceOrder.RemoveAt(0);
+        if (_setPiece) // If we are using a set piece, we only spawn one piece
+        {
+            pieceObj = Instantiate(_tetrominoPrefab[4]);
+        }
+        else
+        {
+            pieceObj = Instantiate(_pieceOrder[0]);
+            _pieceOrder.RemoveAt(0);
+        }
+            
 
         _currentPiece = pieceObj.GetComponent<PieceScript>();
         _currentPiece.SetGrid(_grid);
@@ -218,7 +229,7 @@ public class PieceController : MonoBehaviour
                 continue;
             }
 
-            bool canMoveDown = _currentPiece.TestOffset(new Vector2Int(1, 0)); // Can we place below?
+            bool canMoveDown = _currentPiece.TestOffset(new Vector2Int(0, -1)); // Can we place below?
 
             if (canMoveDown) // Normal falling, using a timer here instead of waitForSeconds so it can be interrupted
             {
@@ -242,7 +253,7 @@ public class PieceController : MonoBehaviour
             yield return null;
         }
         if (!_forceHardDrop)
-            _currentPiece.TryMovePiece(new Vector2Int(1, 0));
+            _currentPiece.TryMovePiece(DOWN);
     }
 
     private IEnumerator LockDelay()
