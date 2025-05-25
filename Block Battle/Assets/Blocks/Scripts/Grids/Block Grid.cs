@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -17,9 +18,10 @@ public class BlockGrid : MonoBehaviour
 
     public Vector2 scale = new Vector2(0,0);
 
-    private int _maxHieght = 20;
+    private int _maxHeight = 20;
     private int _spaceUsed = 0; // Tracks the top most block being used
     private GameObject[,] _blocksInGrid = new GameObject[20, 10]; // Initialize array of gameObjects (cubes) representning the filled array
+    private int[] _blockCount = new int[20]; // Tracks the number of blocks in each row
 
     //private void Awake()
     //{
@@ -52,25 +54,8 @@ public class BlockGrid : MonoBehaviour
 
     }
 
-    // Prints grid represented with 0s and 1s
-    public void PrintGrid() {
-        String str = "";
-        for (int r = _maxHieght - 1; r >= 0; r--) {
-            for (int c = 0; c < _cols; c++)
-            {
-                GameObject block = _blocksInGrid[r, c];
-                if (block != null)
-                {
-                    if (block.GetComponent<Block>().GetBlockStatus()) str += "1";
-                    else str += "0";
-                }
-                else str += "_";
-            }
-            str += "\n";
-        }
-        Debug.Log(str);
-    }
-        
+    // -----------------------GETTERS AND SETTERS-----------------------
+
     // Public Methods
     // Returns (bottom left) position in grid based on the row and column
     // Rows count up from 0 to 19, Columns left to right from 0 to 9
@@ -93,27 +78,65 @@ public class BlockGrid : MonoBehaviour
             _spaceUsed = y;
     }
 
+    public void IncrementBlockCount(int y)
+    {
+        _blockCount[y]++;
+    }
+
+    // -----------------------CHECKING METHODS-----------------------
+
+
     // Method to check if space is avaiable based on offset, long method for debug atm
     public bool CheckSpace(int x, int y)
     {
         // Check if coordinates are out of bounds 
-        if (x < 0 || x > 9 || y < 0 || y > _maxHieght-1)
-        { // Check if the coordinates are out of bounds}
-            //Debug.Log($"Coordinates {x}, {y} are out of bounds");
+        if (x < 0 || x > 9 || y < 0 || y > _maxHeight-1)
             return false;
-        }
 
         // Return true if the space is empty or the block is active
         bool isValid = _blocksInGrid[y, x] == null || _blocksInGrid[y, x].GetComponent<Block>().GetBlockStatus();
-        if (isValid)
-        {
-            //Debug.Log($"Coordinates {x}, {y} are valid");
-        }
-        else
-        {
-            //Debug.Log($"Coordinates {x}, {y} are not valid {blocksInGrid[x, y].GetComponent<Block>().GetBlockStatus()}");
-        }
         return isValid;
     }
 
+    public int[] CheckRows(List<int> changedHeights)
+    {
+        int[] rowsToClear = new int[_maxHeight];
+
+        for (int i = 0; i < changedHeights.Count; i++)
+        {
+            if (_blockCount[changedHeights[i]] == _cols)
+            {
+                rowsToClear[changedHeights[i]] = 1;
+                Debug.Log($"Row {changedHeights[i]} is full");
+            }
+        }
+
+        return null;
+    }
+
+
+
+
+    // -----------------------PRINT METHOD-----------------------
+
+    // Prints grid represented with 0s and 1s
+    public void PrintGrid()
+    {
+        String str = "";
+        for (int r = _maxHeight - 1; r >= 0; r--)
+        {
+            for (int c = 0; c < _cols; c++)
+            {
+                GameObject block = _blocksInGrid[r, c];
+                if (block != null)
+                {
+                    if (block.GetComponent<Block>().GetBlockStatus()) str += "1";
+                    else str += "0";
+                }
+                else str += "_";
+            }
+            str += "\n";
+        }
+        Debug.Log(str);
+    }
 }

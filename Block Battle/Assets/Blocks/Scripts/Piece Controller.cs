@@ -15,7 +15,7 @@ public class PieceController : MonoBehaviour
     private List<GameObject> _pieceOrder = new List<GameObject>();
     private List<GameObject> _tempPieceList = new List<GameObject>();
 
-    private float _timeToFall = 999999.8f;
+    private float _timeToFall = .8f;
     private float _lockDelay = .5f;
     private float _maxLockDelay = 1.5f;
 
@@ -199,7 +199,6 @@ public class PieceController : MonoBehaviour
         bool canSpawn = _currentPiece.CheckBlockLocations(initialPositions);
         if (!canSpawn)
         {
-            //Debug.Log("Can not spawn block");
             // Eventually this will be a condition to end the game
             return;
         }

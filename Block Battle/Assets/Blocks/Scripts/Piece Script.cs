@@ -232,12 +232,20 @@ public class PieceScript : MonoBehaviour
     /// <summary>Sets the blocks to inactive. This is used when the blocks are no longer in play (i.e. when they are placed in the grid).</summary>
     public void SetBlocksInactive()
     {
+        List<int> changedHeights = new List<int>();
         for (int i = 0; i < _blocks.Length; i++)
         {
             Block currBlock = _blocks[i].GetComponent<Block>();
             currBlock.SetBlockStatus(false);
+            _blockGrid.IncrementBlockCount(_positions[i].y); // add to track num blocks in row
             Global.scenePreset.Add(new Vector2Int((int)_positions[i].x, (int)_positions[i].y));
+            
+            if (!changedHeights.Contains(_positions[i].y)) // track the heights that get changed, use Block Grid to check if that row is now full
+                changedHeights.Add((int)_positions[i].y);
         }
+
+        _blockGrid.CheckRows(changedHeights); // Check if any rows are full
+
     }
 
     // -----------------------SAVING-----------------------
