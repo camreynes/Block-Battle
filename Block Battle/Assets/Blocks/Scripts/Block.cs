@@ -19,6 +19,15 @@ public class Block : MonoBehaviour
         _posy = y;
     }
 
+    public void OffsetPosition(int x, int y)
+    {
+        _posx += x;
+        _posy += y;
+        //Debug.Log($"Offsetting position by: {x}, {y} | new pos: {_posx}, {_posy}");
+        gameObject.transform.position = _blockGrid.GetPosInGrid(_posx, _posy);
+    }
+
+    // Setter Methods
     public void InitializePosition(int x, int y, int identifier)
     {
         _blockGrid.SetBlockInGridArray(gameObject, x, y);
@@ -39,12 +48,8 @@ public class Block : MonoBehaviour
     {
         return isActive;
     }
-    public Vector2Int GetPosition()
-    {
-        return new Vector2Int(_posx, _posy);
-    }
 
-    // Setter Methods
+    
 
     public void SetBlockStatus(bool status)
     {

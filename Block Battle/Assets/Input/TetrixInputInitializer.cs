@@ -12,7 +12,7 @@ public class TetrixInputInitializer : MonoBehaviour
             if (input != null)
             {
                 TetrixInputManager.RegisterPlayer(input.playerIndex, input);
-                Debug.Log($"Registered player {input.playerIndex}");
+                //Debug.Log($"Registered player {input.playerIndex}");
             }
         }
     }

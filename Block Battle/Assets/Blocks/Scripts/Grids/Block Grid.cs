@@ -17,13 +17,14 @@ public class BlockGrid : MonoBehaviour
     private int _cols = 10;
     private int _playerID;
 
-    public Vector2 scale = new Vector2(0,0);
+    public Vector2 scale = new Vector2(0, 0);
 
     private int _maxHeight = 20;
     private int _spaceUsed = 0; // Tracks the top most block being used
-    private GameObject[,] _blocksInGrid = new GameObject[20, 10]; // Initialize array of gameObjects (cubes) representning the filled array
+    private GameObject[][] _blocksInGrid = new GameObject[20][]; // Initialize array of gameObjects (cubes) representning the filled array
     private GameObject[] _parentRows = new GameObject[20]; // Tracks the number of blocks in each row
     private int[] _blockCount = new int[20]; // Tracks the number of blocks in each row
+
 
     //private void Awake()
     //{
@@ -33,6 +34,12 @@ public class BlockGrid : MonoBehaviour
 
     public void InitializeSelf(int playerID)
     {
+        // Fill jagged array
+        for (int i = 0; i < _rows; i++)
+        {
+            _blocksInGrid[i] = new GameObject[_cols];
+        }
+
         // Get the bounds of the gameObject and find height and width
         SpriteRenderer gridRenderer = gameObject.GetComponent<SpriteRenderer>();
         Bounds gridBounds = gridRenderer.bounds;
@@ -78,16 +85,11 @@ public class BlockGrid : MonoBehaviour
         return _parentRows[y];
     }
 
-    public bool IsRowEmpty(int y)
-    {
-        return _parentRows[y] == null;
-    }
-
     // More Public Methods, used to be in block class
     // Method to change the grid array
     public void SetBlockInGridArray(GameObject block, int x, int y)
     {
-        _blocksInGrid[y, x] = block;
+        _blocksInGrid[y][x] = block;
         if (y >= _spaceUsed)
             _spaceUsed = y;
     }
@@ -104,14 +106,14 @@ public class BlockGrid : MonoBehaviour
     public bool CheckSpace(int x, int y)
     {
         // Check if coordinates are out of bounds 
-        if (x < 0 || x > 9 || y < 0 || y > _maxHeight-1)
+        if (x < 0 || x > 9 || y < 0 || y > _maxHeight - 1)
             return false;
 
         // Return true if the space is empty or the block is active
-        bool isValid = _blocksInGrid[y, x] == null || _blocksInGrid[y, x].GetComponent<Block>().GetBlockStatus();
+        bool isValid = _blocksInGrid[y][x] == null || _blocksInGrid[y][x].GetComponent<Block>().GetBlockStatus();
         return isValid;
     }
-    
+
     /// <summary>
     /// Checks changed rows and returns full ones
     /// </summary>
@@ -131,43 +133,91 @@ public class BlockGrid : MonoBehaviour
         return changedHeights;
     }
 
-    public List<Tuple<int, int, int>> ClearRows(List<int> fullRows)
+    public void ClearRows(List<int> fullRows)
     {
         // ---------- Clear Rows, Destroy Game Objects ----------
-        for (int i = 0; i < fullRows.Count; i++) 
+        for (int i = 0; i < fullRows.Count; i++)
         {
-            ClearRow(fullRows[i]);
+            int y = fullRows[i];
+            Destroy(_parentRows[y]);
+            _parentRows[y] = null;
+            _blockCount[y] = 0;
         }
 
-        List<Tuple<int, int, int>> rowsToClear = new List<Tuple<int, int, int>>(); // start row to shift, last row to shift, amount to shift
-        // Gather touples to give us clear information
-        
+        List<Tuple<int, int, int>> rowsToShift = new List<Tuple<int, int, int>>(); // start row to shift, last row to shift, amount to shift
+                                                                                   // Gather touples to give us clear information
+
         for (int i = 0; i < fullRows.Count; i++)
         {
             int y1 = fullRows[i] + 1; //1
-            int y2 = (i+1 < fullRows.Count) ? fullRows[i+1]-1 : _maxHeight-1;
-            
-            //Debug.Log($"Row: {i}, y1: {y1}, y2: {y2}");
+            int y2 = (i + 1 < fullRows.Count) ? fullRows[i + 1] - 1 : _maxHeight - 1;
 
             if (y2 < y1)
             {
                 continue; // rows are stacked, continue
             }
-            rowsToClear.Add(new Tuple<int, int, int>(y1,y2,i+1));
+            //Debug.Log($"Row: {i}, y1: {y1}, y2: {y2}");
+            rowsToShift.Add(new Tuple<int, int, int>(y1, y2, i + 1));
         }
-        return rowsToClear;
+        ShiftRows(rowsToShift);
     }
 
-
-    // -----------------------CLEARING METHODS-----------------------
-
-    public void ClearRow(int row)
+    private void ShiftRows(List<Tuple<int, int, int>> rowsToShift)
     {
-        for (int c = 0; c < _cols; c++) {
-            Destroy(_blocksInGrid[row, c]); // Potentially a place to do object pooling here
-            _blocksInGrid[row, c] = null;
+        //Debug.Log($"Shifting rows: {rowsToShift.Count} rows to shift");
+        for (int i = 0; i < rowsToShift.Count; i++)
+        {
+            int y1 = rowsToShift[i].Item1;
+            int y2 = rowsToShift[i].Item2;
+            int shift = rowsToShift[i].Item3;
+
+            for (int r = y1; r < y2; r++)
+            {
+                if (_parentRows[r] == null)  //don't shift nonexistent rows
+                    continue;
+
+                // Shift physical location
+                ShiftUnityPosition(r, shift);
+
+                // Shift blocks in the parent row grid
+                _parentRows[r - shift] = _parentRows[r];
+                _parentRows[r - shift].transform.name = $"Row_{r - shift}";
+                _parentRows[r] = null;
+
+                // Shift block count
+                _blockCount[r - shift] = _blockCount[r];
+                _blockCount[r] = 0; // Clear old row
+
+                // Shift blocks in the gameobject grid
+                ShiftArray(r, r - shift);
+            }
         }
-        _blockCount[row] = 0;
+        Debug.Log("-----------------------------");
+        PrintArray(_parentRows);
+        Debug.Log("-----------------------------");
+        PrintGrid();
+    }
+
+    private void ShiftUnityPosition(int row, int rowsToShift)
+    {
+        //Debug.Log($"Shifting unity with, row: {row} and shift: {rowsToShift}");
+        for (int c = 0; c < _cols; c++)
+        {
+            Block block = _blocksInGrid[row][c]?.GetComponent<Block>();
+            if (block != null)
+            {
+                block.OffsetPosition(0,-rowsToShift);
+            }
+        }
+    }
+    private void ShiftArray(int oldRow, int newRow)
+    {
+        for (int c = 0; c < _cols; c++)
+        {
+            _blocksInGrid[newRow][c] = _blocksInGrid[oldRow][c];
+            _blocksInGrid[oldRow][c] = null; // Clear old row
+        }
+            
     }
 
     // -----------------------PRINT METHOD-----------------------
@@ -180,13 +230,31 @@ public class BlockGrid : MonoBehaviour
         {
             for (int c = 0; c < _cols; c++)
             {
-                GameObject block = _blocksInGrid[r, c];
+                GameObject block = _blocksInGrid[r][c];
                 if (block != null)
                 {
                     if (block.GetComponent<Block>().GetBlockStatus()) str += "1";
                     else str += "0";
                 }
                 else str += "_";
+            }
+            str += "\n";
+        }
+        Debug.Log(str);
+    }
+
+    public void PrintArray(GameObject[] arr)
+    {
+        String str = "";
+        for (int i = 0; i < arr.Length; i++)
+        {
+            if (arr[i] != null)
+            {
+                str += i + ": " + arr[i].name;
+            }
+            else
+            {
+                str += i + ": -";
             }
             str += "\n";
         }

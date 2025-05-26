@@ -236,6 +236,7 @@ public class PieceScript : MonoBehaviour
         List<int> changedHeights = new List<int>();
         for (int i = 0; i < _blocks.Length; i++)
         {
+            if (_blocks[i] == null) return; // If the block is already destroyed, return
             Block currBlock = _blocks[i].GetComponent<Block>();
             int x = (int)_positions[i].x;
             int y = (int)_positions[i].y;
@@ -253,11 +254,10 @@ public class PieceScript : MonoBehaviour
         }
 
         List<int> rowsFull = _blockGrid.CheckRowsFull(changedHeights);
-        for (int i = 0; i < rowsFull.Count; i++)
-        {
+        if (rowsFull.Count > 0)
+            _blockGrid.ClearRows(rowsFull); // Clear the rows that are full get the rows to shift
 
-        }
-        Destroy(gameObject); // Destroy the piece game object after it has been placed
+        Destroy(gameObject); // Destroy the parent piece game object after it has been placed
 
         //List<Tuple<int, int, int>> rowsToClear = _blockGrid.ClearRows(rowsFull); // Check if any rows are full
     }
