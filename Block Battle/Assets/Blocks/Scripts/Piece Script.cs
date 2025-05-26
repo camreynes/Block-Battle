@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -29,7 +30,7 @@ public class PieceScript : MonoBehaviour
         _pieceType = GetPieceType();
         int numBlocks = vectors.Length;
         _blocks = new GameObject[numBlocks];
-        gameObject.transform.parent = GameObject.Find($"PieceController_{_blockGrid.getPlayerID()}").transform; // Set the parent of the piece to the grid attached to the player controlling it
+        gameObject.transform.parent = GameObject.Find($"PieceController_{_blockGrid.GetPlayerID()}").transform; // Set the parent of the piece to the grid attached to the player controlling it
 
         // Iterate through each block, instantiating it, asigning a parent, making it active, initalizing it in array, and initalizing position
         for (int i = 0; i < numBlocks; i++)
@@ -230,22 +231,35 @@ public class PieceScript : MonoBehaviour
     }
 
     /// <summary>Sets the blocks to inactive. This is used when the blocks are no longer in play (i.e. when they are placed in the grid).</summary>
-    public void SetBlocksInactive()
+    public void SetBlocksInactive(GameObject parent)
     {
         List<int> changedHeights = new List<int>();
         for (int i = 0; i < _blocks.Length; i++)
         {
             Block currBlock = _blocks[i].GetComponent<Block>();
+            int x = (int)_positions[i].x;
+            int y = (int)_positions[i].y;
             currBlock.SetBlockStatus(false);
-            _blockGrid.IncrementBlockCount(_positions[i].y); // add to track num blocks in row
-            Global.scenePreset.Add(new Vector2Int((int)_positions[i].x, (int)_positions[i].y));
+
+            GameObject parentRow = _blockGrid.GetParentRow(y);
+            parentRow.transform.SetParent(parent.transform); // Set the parent of the row to the parent passed in (usually the grid)
+            _blocks[i].transform.SetParent(parentRow.transform); // Set the parent of the block to the parent row
+
+            _blockGrid.IncrementBlockCount(y); // Add to track num blocks in row
+            Global.scenePreset.Add(new Vector2Int(x, y));
             
-            if (!changedHeights.Contains(_positions[i].y)) // track the heights that get changed, use Block Grid to check if that row is now full
-                changedHeights.Add((int)_positions[i].y);
+            if (!changedHeights.Contains(y)) // Track the heights that get changed, use Block Grid to check if that row is now full
+                changedHeights.Add(y);
         }
 
-        _blockGrid.CheckRows(changedHeights); // Check if any rows are full
+        List<int> rowsFull = _blockGrid.CheckRowsFull(changedHeights);
+        for (int i = 0; i < rowsFull.Count; i++)
+        {
 
+        }
+        Destroy(gameObject); // Destroy the piece game object after it has been placed
+
+        //List<Tuple<int, int, int>> rowsToClear = _blockGrid.ClearRows(rowsFull); // Check if any rows are full
     }
 
     // -----------------------SAVING-----------------------

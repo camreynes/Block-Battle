@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Vector2 = UnityEngine.Vector2;
@@ -21,6 +22,7 @@ public class BlockGrid : MonoBehaviour
     private int _maxHeight = 20;
     private int _spaceUsed = 0; // Tracks the top most block being used
     private GameObject[,] _blocksInGrid = new GameObject[20, 10]; // Initialize array of gameObjects (cubes) representning the filled array
+    private GameObject[] _parentRows = new GameObject[20]; // Tracks the number of blocks in each row
     private int[] _blockCount = new int[20]; // Tracks the number of blocks in each row
 
     //private void Awake()
@@ -64,9 +66,21 @@ public class BlockGrid : MonoBehaviour
         //Debug.Log($"{_position}");
         return new Vector3((float)(_position.x + _width * x), (float)(_position.y + _height * y), 0);
     }
-    public int getPlayerID()
+    public int GetPlayerID()
     {
         return _playerID;
+    }
+
+    public GameObject GetParentRow(int y)
+    {
+        if (_parentRows[y] == null)
+            _parentRows[y] = new GameObject($"Row_{y}");
+        return _parentRows[y];
+    }
+
+    public bool IsRowEmpty(int y)
+    {
+        return _parentRows[y] == null;
     }
 
     // More Public Methods, used to be in block class
@@ -97,25 +111,64 @@ public class BlockGrid : MonoBehaviour
         bool isValid = _blocksInGrid[y, x] == null || _blocksInGrid[y, x].GetComponent<Block>().GetBlockStatus();
         return isValid;
     }
-
-    public int[] CheckRows(List<int> changedHeights)
+    
+    /// <summary>
+    /// Checks changed rows and returns full ones
+    /// </summary>
+    /// <param name="changedHeights"></param>
+    /// <returns></returns>
+    public List<int> CheckRowsFull(List<int> changedHeights)
     {
-        int[] rowsToClear = new int[_maxHeight];
-
-        for (int i = 0; i < changedHeights.Count; i++)
+        // Filter Changed Heights // CHECKING
+        changedHeights.Sort();
+        for (int i = changedHeights.Count - 1; i >= 0; i--)
         {
-            if (_blockCount[changedHeights[i]] == _cols)
+            if (!(_blockCount[changedHeights[i]] == _cols))
             {
-                rowsToClear[changedHeights[i]] = 1;
-                Debug.Log($"Row {changedHeights[i]} is full");
+                changedHeights.RemoveAt(i);
             }
         }
+        return changedHeights;
+    }
 
-        return null;
+    public List<Tuple<int, int, int>> ClearRows(List<int> fullRows)
+    {
+        // ---------- Clear Rows, Destroy Game Objects ----------
+        for (int i = 0; i < fullRows.Count; i++) 
+        {
+            ClearRow(fullRows[i]);
+        }
+
+        List<Tuple<int, int, int>> rowsToClear = new List<Tuple<int, int, int>>(); // start row to shift, last row to shift, amount to shift
+        // Gather touples to give us clear information
+        
+        for (int i = 0; i < fullRows.Count; i++)
+        {
+            int y1 = fullRows[i] + 1; //1
+            int y2 = (i+1 < fullRows.Count) ? fullRows[i+1]-1 : _maxHeight-1;
+            
+            //Debug.Log($"Row: {i}, y1: {y1}, y2: {y2}");
+
+            if (y2 < y1)
+            {
+                continue; // rows are stacked, continue
+            }
+            rowsToClear.Add(new Tuple<int, int, int>(y1,y2,i+1));
+        }
+        return rowsToClear;
     }
 
 
+    // -----------------------CLEARING METHODS-----------------------
 
+    public void ClearRow(int row)
+    {
+        for (int c = 0; c < _cols; c++) {
+            Destroy(_blocksInGrid[row, c]); // Potentially a place to do object pooling here
+            _blocksInGrid[row, c] = null;
+        }
+        _blockCount[row] = 0;
+    }
 
     // -----------------------PRINT METHOD-----------------------
 

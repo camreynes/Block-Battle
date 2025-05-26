@@ -58,7 +58,7 @@ public class PieceController : MonoBehaviour
             Vector2Int[] initialPositions = Global.scenePreset.ToArray();
             _currentPiece.SetPositions(initialPositions);
             _currentPiece.SpawnBlocks(initialPositions);
-            _currentPiece.SetBlocksInactive();
+            _currentPiece.SetBlocksInactive(gameObject);
         }
 
         SpawnPiece();
@@ -181,7 +181,7 @@ public class PieceController : MonoBehaviour
 
         if (_setPiece) // If we are using a set piece, we only spawn one piece
         {
-            pieceObj = Instantiate(_tetrominoPrefab[4]);
+            pieceObj = Instantiate(_tetrominoPrefab[5]);
         }
         else
         {
@@ -211,7 +211,7 @@ public class PieceController : MonoBehaviour
     {
         _forceHardDrop = true;
         _currentPiece?.HardDrop();
-        _currentPiece?.SetBlocksInactive();
+        _currentPiece?.SetBlocksInactive(gameObject);
         _currentPiece = null;
     }
 
@@ -282,7 +282,7 @@ public class PieceController : MonoBehaviour
         }
         else
         {
-            _currentPiece?.SetBlocksInactive();
+            _currentPiece?.SetBlocksInactive(gameObject);
             _currentPiece = null;
         }
     }
