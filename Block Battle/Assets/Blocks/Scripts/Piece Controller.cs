@@ -1,3 +1,4 @@
+using Mono.Cecil.Cil;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -58,7 +59,10 @@ public class PieceController : MonoBehaviour
             Vector2Int[] initialPositions = Global.scenePreset.ToArray();
             _currentPiece.SetPositions(initialPositions);
             _currentPiece.SpawnBlocks(initialPositions);
+
             _currentPiece.SetBlocksInactive(gameObject);
+            _currentPiece.FinishDestory();
+            _currentPiece = null;
         }
 
         SpawnPiece();
@@ -211,8 +215,7 @@ public class PieceController : MonoBehaviour
     {
         _forceHardDrop = true;
         _currentPiece?.HardDrop();
-        _currentPiece?.SetBlocksInactive(gameObject);
-        _currentPiece = null;
+        SetBlocksInactive();
     }
 
     // -----------------------PRIVATE IENUMERATOR (AND HELPERS)-----------------------
@@ -223,8 +226,8 @@ public class PieceController : MonoBehaviour
         {
             if (_currentPiece == null)
             {
-                SpawnPiece();
                 yield return .05;
+                SpawnPiece();
                 continue;
             }
 
@@ -282,9 +285,25 @@ public class PieceController : MonoBehaviour
         }
         else
         {
-            _currentPiece?.SetBlocksInactive(gameObject);
-            _currentPiece = null;
+            yield return SetBlocksInactive();
         }
+    }
+
+    private IEnumerator SetBlocksInactive()
+    {
+        if (_currentPiece == null)
+            yield break; // No current piece to set inactive
+
+        
+        bool isFull = _currentPiece.SetBlocksInactive(gameObject);
+        if (isFull)
+        {
+            yield return new WaitForSeconds(0.15f);
+            _currentPiece.FinishDestory();
+        }
+
+        _currentPiece = null;
+        yield return null;
     }
 
     // -----------------------PUBLIC METHODS-----------------------

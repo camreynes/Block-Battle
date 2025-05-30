@@ -14,6 +14,8 @@ public class PieceScript : MonoBehaviour
     private Vector2Int[] _positions;
     private int _currentRotation = 0; // 0 = 0 spawn/0 degrees, 1 = right/90 degrees, 2 = reverse/180 degrees, 3 = left/270 degrees
 
+    private List<int> _rowsFull = null;
+
     public void SetGrid(BlockGrid grid)
     {
         //Debug.Log($"Setting grid to {grid.gameObject.name}");
@@ -231,12 +233,14 @@ public class PieceScript : MonoBehaviour
     }
 
     /// <summary>Sets the blocks to inactive. This is used when the blocks are no longer in play (i.e. when they are placed in the grid).</summary>
-    public void SetBlocksInactive(GameObject parent)
+    /// <param name="parent">Parent GameObject to set the blocks under, usually the grid</param>
+    /// <returns>Returns true if any rows are now full, false otherwise</returns>
+    public bool SetBlocksInactive(GameObject parent)
     {
         List<int> changedHeights = new List<int>();
         for (int i = 0; i < _blocks.Length; i++)
         {
-            if (_blocks[i] == null) return; // If the block is already destroyed, return
+            if (_blocks[i] == null) return false; // If the block is already destroyed, return
             Block currBlock = _blocks[i].GetComponent<Block>();
             int x = (int)_positions[i].x;
             int y = (int)_positions[i].y;
@@ -253,18 +257,24 @@ public class PieceScript : MonoBehaviour
                 changedHeights.Add(y);
         }
 
-        List<int> rowsFull = _blockGrid.CheckRowsFull(changedHeights);
-        if (rowsFull.Count > 0)
-            _blockGrid.ClearRows(rowsFull); // Clear the rows that are full get the rows to shift
+        _rowsFull = _blockGrid.CheckRowsFull(changedHeights);
+        if (_rowsFull.Count > 0) { 
+            Debug.Log($"Rows full: {string.Join(", ", _rowsFull)}");    
+            _blockGrid.ShineEffect(_rowsFull); // Trigger the shine effect for the rows that are full
+            return true;
+        }
+        return false;
+    }
 
+    public void FinishDestory()
+    {
+        _blockGrid.ClearRows(_rowsFull);
         Destroy(gameObject); // Destroy the parent piece game object after it has been placed
-
-        //List<Tuple<int, int, int>> rowsToClear = _blockGrid.ClearRows(rowsFull); // Check if any rows are full
     }
 
     // -----------------------SAVING-----------------------
 
     // -----------------------DEBUGGING-----------------------
-    
+
 
 }

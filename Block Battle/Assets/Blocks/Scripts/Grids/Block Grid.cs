@@ -133,6 +133,27 @@ public class BlockGrid : MonoBehaviour
         return changedHeights;
     }
 
+    /// <summary>
+    /// Shine effect for full rows, changed vertical dissolve float within the dissolve shader map
+    /// </summary>
+    /// <param name="fullRows">List of sorted rows that are to be cleared</param>
+    public void ShineEffect(List<int> fullRows)
+    {
+        for (int i = 0; i < fullRows.Count; i++)
+        {
+            int y = fullRows[i];
+            for (int c = 0; c < _cols; c++)
+            {
+                GameObject block = _blocksInGrid[y][c];
+                if (block != null) // Shouldn't be nulll, just in case
+                {
+                    // Create dissolve effect
+                    block.GetComponent<Block>().GetComponent<Dissolve>().VerticalDissolve();
+                }
+            }
+        }
+    }
+
     public void ClearRows(List<int> fullRows)
     {
         // ---------- Clear Rows, Destroy Game Objects ----------
