@@ -1,10 +1,7 @@
-using Mono.Cecil.Cil;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 // Class that handles piece spawning, roations, movements, etc.
 public class PieceController : MonoBehaviour
@@ -281,7 +278,7 @@ public class PieceController : MonoBehaviour
         }
         if (canMoveDown && !_forceHardDrop)
         {
-            _currentPiece.TryMovePiece(new Vector2Int(1, 0));
+            _currentPiece.TryMovePiece(new Vector2Int(0, -1));
         }
         else
         {
@@ -292,13 +289,13 @@ public class PieceController : MonoBehaviour
     private IEnumerator SetBlocksInactive()
     {
         if (_currentPiece == null)
-            yield break; // No current piece to set inactive
+            yield return null; // No current piece to set inactive
 
         
         bool isFull = _currentPiece.SetBlocksInactive(gameObject);
         if (isFull)
         {
-            yield return new WaitForSeconds(0.15f);
+            yield return new WaitForSeconds(Global.effectDuration);
             _currentPiece.FinishDestory();
         }
 

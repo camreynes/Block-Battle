@@ -5,9 +5,8 @@ using UnityEngine;
 
 public class Dissolve : MonoBehaviour
 {
-    private float effectDuration = .15f;
-    private string _verticalDissolve = "_VerticalDissolve";
-    private string _dissolveAmount = "_DissolveAmount";
+    private float _dissolveMaximum = 0f;
+    private string _dissolveString = "";
     private bool _isDissolving = false;
     private float timer = 0;
     private Material _material;
@@ -16,7 +15,7 @@ public class Dissolve : MonoBehaviour
     {
         Renderer spriteRenderer = GetComponent<Renderer>();
         _material = spriteRenderer.material;
-        _material.SetFloat(_verticalDissolve, 0);
+        _material.SetFloat(_dissolveString, 0);
     }
 
     void Update()
@@ -24,12 +23,10 @@ public class Dissolve : MonoBehaviour
         if (_isDissolving)
         {
             timer += Time.deltaTime;
-            float dissolveAmount = (timer / effectDuration) * 1.1f; // Normalize 0-1.1
-            _material.SetFloat(_verticalDissolve, dissolveAmount);
-            Debug.Log($"Dissolve Timer: {timer}");
-
+            float dissolveAmount = (timer / Global.effectDuration) * _dissolveMaximum; // Normalize 0-1.1
+            _material.SetFloat(_dissolveString, dissolveAmount);
             // If dissolveAmount exceeds 1.1, reset timer and stop dissolving
-            if (dissolveAmount >= 1.1f)
+            if (dissolveAmount >= _dissolveMaximum)
             {
                 timer = 0;
                 _isDissolving=false;
@@ -39,15 +36,22 @@ public class Dissolve : MonoBehaviour
 
     public void VerticalDissolve()
     {
-        _isDissolving = true;
-        timer = 0;
-        _material.SetFloat(_verticalDissolve, 0);
+        _dissolveString = "_VerticalDissolve";
+        _dissolveMaximum = 1.1f;
+        StartDissolve();
     }
 
     public void NormalDissolve()
     {
+        _dissolveString = "_DissolveAmount";
+        _dissolveMaximum = 1f;
+        StartDissolve();
+    }
+
+    private void StartDissolve()
+    {
         _isDissolving = true;
         timer = 0;
-        _material.SetFloat(_verticalDissolve, 0);
+        _material.SetFloat(_dissolveString, 0);
     }
 }

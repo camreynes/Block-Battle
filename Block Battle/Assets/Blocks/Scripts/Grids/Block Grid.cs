@@ -145,11 +145,14 @@ public class BlockGrid : MonoBehaviour
             for (int c = 0; c < _cols; c++)
             {
                 GameObject block = _blocksInGrid[y][c];
-                if (block != null) // Shouldn't be nulll, just in case
-                {
-                    // Create dissolve effect
+                if (block == null) // Shouldn't be nulll, just in case
+                    continue;
+
+                // Two different effects depending on whether the cleared row is surrounded by other full rows or not
+                if (fullRows.Contains(y - 1)  ||  fullRows.Contains(y + 1))
+                    block.GetComponent<Block>().GetComponent<Dissolve>().NormalDissolve();
+                else
                     block.GetComponent<Block>().GetComponent<Dissolve>().VerticalDissolve();
-                }
             }
         }
     }
@@ -185,17 +188,29 @@ public class BlockGrid : MonoBehaviour
 
     private void ShiftRows(List<Tuple<int, int, int>> rowsToShift)
     {
-        //Debug.Log($"Shifting rows: {rowsToShift.Count} rows to shift");
+        //rowsToShift.Sort((a, b) => b.Item1.CompareTo(a.Item1));
+        print($"ROWS TO SHIFT PRINT");
+        PrintGrid();
+        string str = "";
+        for (int i = 0; i < rowsToShift.Count; i++)
+        {
+            str += $"Index {i}: {rowsToShift[i].Item1} to {rowsToShift[i].Item2}, shift: {rowsToShift[i].Item3}\n";
+        }
+        Debug.Log(str);
         for (int i = 0; i < rowsToShift.Count; i++)
         {
             int y1 = rowsToShift[i].Item1;
             int y2 = rowsToShift[i].Item2;
             int shift = rowsToShift[i].Item3;
 
-            for (int r = y1; r < y2; r++)
+            for (int r = y1; r <= y2; r++)
             {
-                if (_parentRows[r] == null)  //don't shift nonexistent rows
+                Debug.Log($"Moving row {r} -> {r - shift}");
+                if (_parentRows[r] == null)
+                { //don't shift nonexistent rows
+                    Debug.Log($"CONTINUING");
                     continue;
+                }
 
                 // Shift physical location
                 ShiftUnityPosition(r, shift);
@@ -213,10 +228,6 @@ public class BlockGrid : MonoBehaviour
                 ShiftArray(r, r - shift);
             }
         }
-        Debug.Log("-----------------------------");
-        PrintArray(_parentRows);
-        Debug.Log("-----------------------------");
-        PrintGrid();
     }
 
     private void ShiftUnityPosition(int row, int rowsToShift)
@@ -224,11 +235,12 @@ public class BlockGrid : MonoBehaviour
         //Debug.Log($"Shifting unity with, row: {row} and shift: {rowsToShift}");
         for (int c = 0; c < _cols; c++)
         {
-            Block block = _blocksInGrid[row][c]?.GetComponent<Block>();
-            if (block != null)
+            if (_blocksInGrid[row][c] == null)
             {
-                block.OffsetPosition(0,-rowsToShift);
+                continue; // Skip if no block in this position
             }
+            Block block = _blocksInGrid[row][c].GetComponent<Block>();
+            block.OffsetPosition(0,-rowsToShift);
         }
     }
     private void ShiftArray(int oldRow, int newRow)

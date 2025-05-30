@@ -259,7 +259,6 @@ public class PieceScript : MonoBehaviour
 
         _rowsFull = _blockGrid.CheckRowsFull(changedHeights);
         if (_rowsFull.Count > 0) { 
-            Debug.Log($"Rows full: {string.Join(", ", _rowsFull)}");    
             _blockGrid.ShineEffect(_rowsFull); // Trigger the shine effect for the rows that are full
             return true;
         }
@@ -268,7 +267,8 @@ public class PieceScript : MonoBehaviour
 
     public void FinishDestory()
     {
-        _blockGrid.ClearRows(_rowsFull);
+        if (_rowsFull.Count > 0)
+            _blockGrid.ClearRows(_rowsFull);
         Destroy(gameObject); // Destroy the parent piece game object after it has been placed
     }
 
