@@ -13,6 +13,7 @@ public static class TetrixInputManager
 {
     private static readonly Dictionary<int, TetrixControls> _playerControlsMap = new();
     private static readonly Dictionary<int, GameObject> _playerGrids = new();
+    private static readonly Dictionary<int, GameObject> _playerParents = new();
 
     private static readonly Dictionary<GameInputAction, Func<TetrixControls, InputAction>> actionMap = new()
     {
@@ -42,6 +43,7 @@ public static class TetrixInputManager
 
         _playerGrids[playerID] = newGrid; // Store the grid object for the player
         _playerControlsMap[playerID] = controls;
+        _playerParents[playerID] = 
     }
 
     public static void UnregisterPlayer(int playerID)

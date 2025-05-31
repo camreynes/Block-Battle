@@ -12,12 +12,16 @@ public class InitializeGrids : MonoBehaviour
     //private Vector3 _defaultBlockPos = new Vector3(); // Default position for the block
     //private Vector3 _defaultBlockScale = new Vector3(4.494813f, 8.948033f); // Default scale for the block
 
-    public GameObject InitializeGrid(int playerId)
+    public GameObject[] InitializeGrid(int playerId)
     {
+        GameOvbj
+
         // Create a new grid for the player
         GameObject newGrid = Instantiate(_playerGridPrefab);
-        newGrid.name = $"PlayerGrid_{playerId}";
-        newGrid.transform.SetParent(transform, false);
+        newGrid.name = $"Grid_{playerId}";
+        GameObject newPlayer = new GameObject($"Player_{playerId}");
+        newGrid.transform.SetParent(newPlayer.transform, false);
+        newPlayer.transform.SetParent(transform, false);
         newGrid.transform.localPosition = _defaultGridPos;
         newGrid.transform.localScale = _defaultGridScale;
         newGrid.GetComponent<SpriteRenderer>().sortingOrder = 2;
@@ -36,8 +40,9 @@ public class InitializeGrids : MonoBehaviour
         pieceController.name = $"PieceController_{playerId}";
         pieceController.transform.SetParent(newGrid.transform, false);
         pieceController.GetComponent<PieceController>().SetGrid(newGrid.GetComponent<BlockGrid>());
+        pieceController.GetComponent<PieceController>().SetPlayerID(playerId);
         pieceController.SetActive(true); 
 
-        return newGrid;
+        return newPlayer;
     }
 }

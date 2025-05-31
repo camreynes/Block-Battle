@@ -18,7 +18,7 @@ public class PieceController : MonoBehaviour
     private float _maxLockDelay = 1.5f;
 
     private PieceScript _currentPiece;
-    private int _playerId = 0; // Player ID for input mapping, will make dynamic later
+    private int _playerID = -1; // Player ID for input mapping, will make dynamic later
 
     private HoldState _holdLeft;
     private HoldState _holdRight;
@@ -87,32 +87,32 @@ public class PieceController : MonoBehaviour
             _recentlyMoved = _currentPiece.TryMovePiece(DOWN);
 
         // PLAYER INPUTS - MOVEMENT
-        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, _playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, _playerID))
             OnMoveStart(new Vector2Int(-1, 0));
-        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerId).WasReleasedThisFrame())
+        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerID).WasReleasedThisFrame())
             OnMoveEnd(new Vector2Int(-1, -0));
 
-        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerID))
             OnMoveStart(new Vector2Int(1, 0));
-        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, _playerId).WasReleasedThisFrame())
+        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, _playerID).WasReleasedThisFrame())
             OnMoveEnd(new Vector2Int(1, 0));
 
-        if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, _playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, _playerID))
             OnMoveStart(new Vector2Int(0, -1));
-        if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, _playerId).WasReleasedThisFrame())
+        if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, _playerID).WasReleasedThisFrame())
             OnMoveEnd(new Vector2Int(0, -1));
 
-        if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerID))
             HardDrop();
 
         // PLAYER INPUTS - ROTATIONS
-        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, _playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, _playerID))
             _recentlyMoved = _currentPiece.TryRotateCW();
-        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerId))
+        if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerID))
             _recentlyMoved = _currentPiece.TryRotateCCW();
 
         // PLAYER INPUTS - TESTING
-        if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerId)) {
+        if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerID)) {
             SaveScene();
         }
     }
@@ -305,10 +305,9 @@ public class PieceController : MonoBehaviour
 
     // -----------------------PUBLIC METHODS-----------------------
 
-    public void SetGrid(BlockGrid grid)
-    {
-        _grid = grid;
-    }
+    public void SetGrid(BlockGrid grid) { _grid = grid; }
+
+    public void SetPlayerID(int id) { _playerID = id; }
 
     public static void PrintVector2Array(Vector2Int[] vectors, string label = "Vector2 Array")
     {
