@@ -84,6 +84,19 @@ public class PieceScript : MonoBehaviour
         }
     }
 
+    public int BottomVectors()
+    {
+        int displacement = 0;
+        Vector2Int[] bottomVectors = _positions;
+        Vector2Int[] offset = CreateOffsetVectors(0, -1, bottomVectors);
+        while (CheckBlockLocations(offset))
+        {
+            bottomVectors = offset;
+            offset = CreateOffsetVectors(0, -1, bottomVectors);
+        }
+        return displacement;
+    }
+
     /// <summary>Attempt to move the piece (in array and unity).</summary>'
     /// <param name="offset">Offset vector to be applied to the piece</param>
     /// <returns>True if the move was successful, false otherwise</returns>
