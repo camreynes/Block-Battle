@@ -43,7 +43,7 @@ public static class TetrixInputManager
 
         _playerGrids[playerID] = newGrid; // Store the grid object for the player
         _playerControlsMap[playerID] = controls;
-        _playerParents[playerID] = 
+        //_playerParents[playerID] = 
     }
 
     public static void UnregisterPlayer(int playerID)

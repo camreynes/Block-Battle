@@ -12,9 +12,9 @@ public class InitializeGrids : MonoBehaviour
     //private Vector3 _defaultBlockPos = new Vector3(); // Default position for the block
     //private Vector3 _defaultBlockScale = new Vector3(4.494813f, 8.948033f); // Default scale for the block
 
-    public GameObject[] InitializeGrid(int playerId)
+    public GameObject InitializeGrid(int playerId)
     {
-        GameOvbj
+        //GameOvbj
 
         // Create a new grid for the player
         GameObject newGrid = Instantiate(_playerGridPrefab);
@@ -43,6 +43,6 @@ public class InitializeGrids : MonoBehaviour
         pieceController.GetComponent<PieceController>().SetPlayerID(playerId);
         pieceController.SetActive(true); 
 
-        return newPlayer;
+        return newGrid;
     }
 }
