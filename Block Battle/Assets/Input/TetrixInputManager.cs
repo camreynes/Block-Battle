@@ -12,7 +12,7 @@ using UnityEngine.InputSystem;
 public static class TetrixInputManager
 {
     private static readonly Dictionary<int, TetrixControls> _playerControlsMap = new();
-    private static readonly Dictionary<int, GameObject> _playerGrids = new();
+    private static readonly Dictionary<int, Dictionary<String,GameObject>> _playerGrids = new();
     private static readonly Dictionary<int, GameObject> _playerParents = new();
 
     private static readonly Dictionary<GameInputAction, Func<TetrixControls, InputAction>> actionMap = new()
@@ -39,9 +39,9 @@ public static class TetrixInputManager
 
         // Create Grid for player
         InitializeGrids grid_manager = GameObject.FindFirstObjectByType<InitializeGrids>();
-        GameObject newGrid = grid_manager.InitializeGrid(playerID);
+        Dictionary<String,GameObject> newDict = grid_manager.InitializeGrid(playerID);
 
-        _playerGrids[playerID] = newGrid; // Store the grid object for the player
+        _playerGrids[playerID] = newDict; // Store the grid object for the player
         _playerControlsMap[playerID] = controls;
         //_playerParents[playerID] = 
     }

@@ -40,27 +40,23 @@ public class BlockGrid : MonoBehaviour
             _blocksInGrid[i] = new GameObject[_cols];
         }
 
+        _position = new Vector2(transform.position.x, transform.position.y);
+        scale = gameObject.transform.localScale;
+        _playerID = playerID;
+    }
+
+    public void InitializeDimens()
+    {
         // Get the bounds of the gameObject and find height and width
         SpriteRenderer gridRenderer = gameObject.GetComponent<SpriteRenderer>();
         Bounds gridBounds = gridRenderer.bounds;
-        _position = new Vector2(transform.position.x, transform.position.y); // Get the position of the grid
-        //Debug.Log($"Grid position: {_position}");
 
         double width = gridBounds.size.x / _cols;
         double height = gridBounds.size.y / _rows;
-        // These values should match but do not due to Unity
 
         // Initialize private widh and height (We do this in case we use a custom grid rather than the default 20x10 one)
         _width = width;
         _height = height;
-        _playerID = playerID;
-
-        scale = gameObject.transform.localScale;
-        //Debug.Log($"Grid height: {height}, width: {width}");
-
-        Debug.DrawLine(GetPosInGrid(0, 0), GetPosInGrid(0, 0) + Vector3.up * 0.5f, Color.green, 5f);
-        Debug.DrawLine(GetPosInGrid(0, 0), GetPosInGrid(0, 0) + Vector3.right * 0.5f, Color.red, 5f);
-
     }
 
     // -----------------------GETTERS AND SETTERS-----------------------
@@ -97,6 +93,16 @@ public class BlockGrid : MonoBehaviour
     public void IncrementBlockCount(int y)
     {
         _blockCount[y]++;
+    }
+
+    public double GetTotalWidth()
+    {
+        return _width * _cols;
+    }
+
+    public double GetTotalHeight()
+    {
+        return _height * _rows;
     }
 
     // -----------------------CHECKING METHODS-----------------------
@@ -189,14 +195,11 @@ public class BlockGrid : MonoBehaviour
     private void ShiftRows(List<Tuple<int, int, int>> rowsToShift)
     {
         //rowsToShift.Sort((a, b) => b.Item1.CompareTo(a.Item1));
-        print($"ROWS TO SHIFT PRINT");
-        PrintGrid();
         string str = "";
         for (int i = 0; i < rowsToShift.Count; i++)
         {
             str += $"Index {i}: {rowsToShift[i].Item1} to {rowsToShift[i].Item2}, shift: {rowsToShift[i].Item3}\n";
         }
-        Debug.Log(str);
         for (int i = 0; i < rowsToShift.Count; i++)
         {
             int y1 = rowsToShift[i].Item1;
@@ -205,10 +208,8 @@ public class BlockGrid : MonoBehaviour
 
             for (int r = y1; r <= y2; r++)
             {
-                Debug.Log($"Moving row {r} -> {r - shift}");
                 if (_parentRows[r] == null)
                 { //don't shift nonexistent rows
-                    Debug.Log($"CONTINUING");
                     continue;
                 }
 
