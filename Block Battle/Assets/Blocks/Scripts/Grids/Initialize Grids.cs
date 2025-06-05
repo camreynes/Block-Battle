@@ -7,7 +7,8 @@ public class InitializeGrids : MonoBehaviour
 {
     [SerializeField] private GameObject _playerGridPrefab;
     [SerializeField] private GameObject _gridBackgroundPrefab;
-    [SerializeField] private GameObject _piecePreviewPrefab;
+    [SerializeField] private GameObject _previewPrefab;
+    [SerializeField] private GameObject _previewBackgroundPrefab;
 
     [SerializeField] private GameObject _pieceController;
 
@@ -21,40 +22,62 @@ public class InitializeGrids : MonoBehaviour
     {
         Dictionary<String, GameObject> dict = new Dictionary<String, GameObject>();
 
+        // Create player
+        GameObject player = new GameObject($"Player_{playerId}");
+        player.transform.SetParent(transform, false);
+
         // Create a new grid for the player
-        GameObject newGrid = Instantiate(_playerGridPrefab);
-        newGrid.name = $"Grid_{playerId}";
-        GameObject newPlayer = new GameObject($"Player_{playerId}");
-        newPlayer.transform.SetParent(transform, false);
-        newGrid.transform.localScale = _defaultGridScale;
-        newGrid.GetComponent<SpriteRenderer>().sortingOrder = 2;
-        BlockGrid blockGrid = newGrid.GetComponent<BlockGrid>();
+        GameObject grid = Instantiate(_playerGridPrefab);
+        grid.name = $"Grid_{playerId}";
+        grid.transform.localScale = _defaultGridScale;
+        grid.GetComponent<SpriteRenderer>().sortingOrder = 2;
+        BlockGrid blockGrid = grid.GetComponent<BlockGrid>();
         blockGrid.InitializeDimens();
-        float gridX = - (float)(blockGrid.GetTotalWidth()/2);
-        float gridY = -(float)(blockGrid.GetTotalHeight() / 2);
-        newGrid.transform.localPosition = new Vector3(gridX,gridY,0f);
-        newGrid.transform.SetParent(newPlayer.transform, false);
+        float gridWidth = (float) blockGrid.GetTotalWidth();
+        float gridHeight = (float) blockGrid.GetTotalHeight();
+        float gridX = - (gridWidth / 2);
+        float gridY = - (gridHeight / 2);
+        grid.transform.localPosition = new Vector3(gridX,gridY,0f);
+        grid.transform.SetParent(player.transform, true);
         blockGrid.InitializeSelf(playerId);
-        dict.Add("newPlayer", newPlayer);
-        dict.Add("newGrid", newGrid);
+        dict.Add("player", player);
+        dict.Add("grid", grid);
 
         // Create a new background for the grid
         GameObject gridBackground = Instantiate(_gridBackgroundPrefab);
         gridBackground.name = $"GridBackground_{playerId}";
-        gridBackground.transform.SetParent(newGrid.transform, false);
+        gridBackground.transform.SetParent(grid.transform, false);
         gridBackground.transform.localPosition = Vector3.zero;
         gridBackground.transform.localScale = Vector3.one;
         gridBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
         dict.Add("gridBackground", gridBackground);
 
         // Create a new piece preview window
+        GameObject preview = Instantiate(_previewPrefab);
+        preview.name = $"PiecePreview_{playerId}";
+        preview.transform.SetParent(player.transform, true);
+        float prevX = gridX + gridWidth * 1.05f;
+        float prevY = gridY + gridHeight;
+        preview.transform.localPosition = new Vector3(prevX, prevY, 0f);
+        preview.transform.localScale = new Vector3(_defaultGridScale.x*.65f, _defaultGridScale.y*.65f, 1f);
+        preview.GetComponent<SpriteRenderer>().sortingOrder = 2;
+        preview.GetComponent<Preview>().InitializeSelf();
+        dict.Add("preview", preview);
 
+        // Create a new piece preview background
+        GameObject previewBackground = Instantiate(_previewBackgroundPrefab);
+        previewBackground.name = $"PreviewBackground_{playerId}";
+        previewBackground.transform.SetParent(preview.transform, false);
+        previewBackground.transform.localPosition = Vector3.zero;
+        previewBackground.transform.localScale = Vector3.one;
+        previewBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
+        dict.Add("previewBackground", previewBackground);
 
         // Create a new piece spawner for the player
         GameObject pieceController = Instantiate(_pieceController);
         pieceController.name = $"PieceController_{playerId}";
-        pieceController.transform.SetParent(newGrid.transform, false);
-        pieceController.GetComponent<PieceController>().SetGrid(newGrid.GetComponent<BlockGrid>());
+        pieceController.transform.SetParent(grid.transform, true);
+        pieceController.GetComponent<PieceController>().SetGrid(grid.GetComponent<BlockGrid>());
         pieceController.GetComponent<PieceController>().SetPlayerID(playerId);
         pieceController.SetActive(true);
         dict.Add("pieceController", pieceController);
