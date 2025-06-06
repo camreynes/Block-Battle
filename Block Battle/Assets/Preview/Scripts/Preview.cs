@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Preview : MonoBehaviour
 {
@@ -48,6 +50,30 @@ public class Preview : MonoBehaviour
 
         _piece4 = Instantiate(_pieces[3], _next4, Quaternion.identity);
         _piece4.transform.SetParent(transform, false);
+
+        // Canvas and text
+        GameObject canvasGO = new GameObject("Canvas");
+        Canvas canvas = canvasGO.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvasGO.AddComponent<CanvasScaler>();
+        canvasGO.AddComponent<GraphicRaycaster>();
+
+        // Create a Text object
+        GameObject textGO = new GameObject("Text");
+        textGO.transform.SetParent(canvasGO.transform);
+        //textGO.transform.position = transform.position; //+ new Vector3(0, -_height / 2f + 100, 0);
+
+        // Edit text object
+        TextMeshProUGUI msg = textGO.AddComponent<TextMeshProUGUI>();
+        msg.text = "Next";
+        msg.fontSize = 36;
+        msg.alignment = TextAlignmentOptions.Center;
+        msg.color = Color.white;
+        // msg.rectTransform.anchoredPosition = transform.;
+
+        // Set RectTransform position and size
+        RectTransform rectTransform = msg.GetComponent<RectTransform>();
+        rectTransform.sizeDelta = new Vector2(600, 200);
     }
 
     public void UpdatePreview(int[] list)
