@@ -10,8 +10,8 @@ public class PieceController : MonoBehaviour
     [SerializeField] private GameObject[] _tetrominoPrefab;
     [SerializeField] protected BlockGrid _grid;
 
-    private List<GameObject> _pieceOrder = new List<GameObject>();
-    private List<GameObject> _tempPieceList = new List<GameObject>();
+    private List<Tuple<int,GameObject>> _pieceOrder = new List<Tuple<int,GameObject>>();
+    private List<Tuple<int,GameObject>> _tempPieceList = new List<Tuple<int,GameObject>>();
 
     private float _timeToFall = .8f;
     private float _lockDelay = .5f;
@@ -26,8 +26,11 @@ public class PieceController : MonoBehaviour
 
     private bool _recentlyMoved = false;
     private bool _forceHardDrop = false;
+    private bool _firstPiece = true; // Is first piece spawned?
     [SerializeField] private bool _setPiece = false; // Used to determine if we are using only one hardset piece
     [SerializeField] private bool _stagePreset = false;
+
+    private Preview _preview;
 
     private static readonly Vector2Int LEFT = new Vector2Int(-1, 0);
     private static readonly Vector2Int RIGHT = new Vector2Int(1, 0);
@@ -88,19 +91,19 @@ public class PieceController : MonoBehaviour
 
         // PLAYER INPUTS - MOVEMENT
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, _playerID))
-            OnMoveStart(new Vector2Int(-1, 0));
+            OnMoveStart(LEFT);
         if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerID).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2Int(-1, -0));
+            OnMoveEnd(LEFT);
 
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerID))
-            OnMoveStart(new Vector2Int(1, 0));
+            OnMoveStart(RIGHT);
         if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, _playerID).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2Int(1, 0));
+            OnMoveEnd(RIGHT);
 
         if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, _playerID))
-            OnMoveStart(new Vector2Int(0, -1));
+            OnMoveStart(DOWN);
         if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, _playerID).WasReleasedThisFrame())
-            OnMoveEnd(new Vector2Int(0, -1));
+            OnMoveEnd(DOWN);
 
         if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerID))
             HardDrop();
@@ -129,13 +132,13 @@ public class PieceController : MonoBehaviour
 
         for (int i = 0; i < _tetrominoPrefab.Length; i++) // Copy of list to determine randomized order
         {
-            _tempPieceList.Add(_tetrominoPrefab[i]);
+            _tempPieceList.Add(new Tuple<int, GameObject>(i, _tetrominoPrefab[i]));
         }
 
         for (int i = 0; i < _tetrominoPrefab.Length; i++) // Add to pieceOrder list
         {
             int randomIndex = UnityEngine.Random.Range(0, _tempPieceList.Count);
-            _pieceOrder.Add(_tempPieceList[randomIndex]);
+            _pieceOrder.Add(new Tuple<int, GameObject>(_tempPieceList[randomIndex].Item1, _tempPieceList[randomIndex].Item2));
             _tempPieceList.RemoveAt(randomIndex);
         }
     }
@@ -177,24 +180,25 @@ public class PieceController : MonoBehaviour
         GameObject pieceObj = null;
 
         // Random(ish) Piece Order
-        if (_pieceOrder.Count <= 2)
+        if (_pieceOrder.Count <= 5)
             CreateNewOrder();
 
         if (_setPiece) // If we are using a set piece, we only spawn one piece
-        {
             pieceObj = Instantiate(_tetrominoPrefab[5]);
-        }
         else
         {
-            pieceObj = Instantiate(_pieceOrder[0]);
+            pieceObj = Instantiate(_pieceOrder[0].Item2);
             _pieceOrder.RemoveAt(0);
         }
-            
+
+        // Update preview with next pieces
+        int[] list = new int[] { _pieceOrder[0].Item1, _pieceOrder[1].Item1, _pieceOrder[2].Item1, _pieceOrder[3].Item1 };
+        _preview.UpdatePreview(list);
+
 
         _currentPiece = pieceObj.GetComponent<PieceScript>();
         _currentPiece.SetGrid(_grid);
         Vector2Int[] initialPositions = _currentPiece.GetInitialPositions();
-
         _currentPiece.SetPositions(initialPositions);
 
         bool canSpawn = _currentPiece.CheckBlockLocations(initialPositions);
@@ -306,6 +310,8 @@ public class PieceController : MonoBehaviour
     // -----------------------PUBLIC METHODS-----------------------
 
     public void SetGrid(BlockGrid grid) { _grid = grid; }
+
+    public void SetPreview(Preview preview) { _preview = preview; }
 
     public void SetPlayerID(int id) { _playerID = id; }
 

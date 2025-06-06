@@ -50,7 +50,7 @@ public class Preview : MonoBehaviour
         _piece4.transform.SetParent(transform, false);
     }
 
-    public void InitializePreview(int[] list)
+    public void UpdatePreview(int[] list)
     {
         _piece1.GetComponent<SpriteRenderer>().sprite = _pieces[list[0]].GetComponent<SpriteRenderer>().sprite;
         _piece2.GetComponent<SpriteRenderer>().sprite = _pieces[list[1]].GetComponent<SpriteRenderer>().sprite;

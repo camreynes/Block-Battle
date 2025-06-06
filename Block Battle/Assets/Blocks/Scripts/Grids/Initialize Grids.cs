@@ -52,6 +52,15 @@ public class InitializeGrids : MonoBehaviour
         gridBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
         dict.Add("gridBackground", gridBackground);
 
+        // Create a new piece controller for the player
+        GameObject pieceController = Instantiate(_pieceController);
+        pieceController.name = $"PieceController_{playerId}";
+        pieceController.transform.SetParent(grid.transform, true);
+        pieceController.GetComponent<PieceController>().SetGrid(grid.GetComponent<BlockGrid>());
+        pieceController.GetComponent<PieceController>().SetPlayerID(playerId);
+        pieceController.SetActive(true);
+        dict.Add("pieceController", pieceController);
+
         // Create a new piece preview window
         GameObject preview = Instantiate(_previewPrefab);
         preview.name = $"PiecePreview_{playerId}";
@@ -61,6 +70,7 @@ public class InitializeGrids : MonoBehaviour
         preview.transform.localPosition = new Vector3(prevX, prevY, 0f);
         preview.transform.localScale = new Vector3(_defaultGridScale.x*.65f, _defaultGridScale.y*.65f, 1f);
         preview.GetComponent<SpriteRenderer>().sortingOrder = 2;
+        pieceController.GetComponent<PieceController>().SetPreview(preview.GetComponent<Preview>());
         preview.GetComponent<Preview>().InitializeSelf();
         dict.Add("preview", preview);
 
@@ -72,15 +82,6 @@ public class InitializeGrids : MonoBehaviour
         previewBackground.transform.localScale = Vector3.one;
         previewBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
         dict.Add("previewBackground", previewBackground);
-
-        // Create a new piece spawner for the player
-        GameObject pieceController = Instantiate(_pieceController);
-        pieceController.name = $"PieceController_{playerId}";
-        pieceController.transform.SetParent(grid.transform, true);
-        pieceController.GetComponent<PieceController>().SetGrid(grid.GetComponent<BlockGrid>());
-        pieceController.GetComponent<PieceController>().SetPlayerID(playerId);
-        pieceController.SetActive(true);
-        dict.Add("pieceController", pieceController);
 
         return dict;
     }
