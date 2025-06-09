@@ -88,7 +88,7 @@ public class PieceScript : MonoBehaviour
     {
         int displacement = 0;
         Vector2Int[] bottomVectors = _positions;
-        Vector2Int[] offset = CreateOffsetVectors(0, -1, bottomVectors);
+        Vector2Int[] offset = CreateOffsetVectors(0, -1, _positions);
         while (CheckBlockLocations(offset))
         {
             bottomVectors = offset;

@@ -23,6 +23,7 @@ public class Preview : MonoBehaviour
 
     public void InitializeSelf()
     {
+        // SpriteRenderer bounds setup
         SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
         Vector2 size = spriteRenderer.size;
         _width = size.x;
@@ -34,6 +35,7 @@ public class Preview : MonoBehaviour
         float next2Y = segY * -13f;
         float next3Y = segY * -19f;
         float next4Y = segY * -25f;
+
         _next1 = new Vector2(centX, next1Y);
         _next2 = new Vector2(centX, next2Y);
         _next3 = new Vector2(centX, next3Y);
@@ -51,29 +53,38 @@ public class Preview : MonoBehaviour
         _piece4 = Instantiate(_pieces[3], _next4, Quaternion.identity);
         _piece4.transform.SetParent(transform, false);
 
-        // Canvas and text
+        // Create World Space Canvas
         GameObject canvasGO = new GameObject("Canvas");
+        canvasGO.transform.SetParent(transform, false); // Attach to this object
         Canvas canvas = canvasGO.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvasGO.AddComponent<CanvasScaler>();
+        canvas.renderMode = RenderMode.WorldSpace;
+
+        CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
+        scaler.dynamicPixelsPerUnit = 10; // Optional: controls how sharp text appears
+
         canvasGO.AddComponent<GraphicRaycaster>();
 
-        // Create a Text object
-        GameObject textGO = new GameObject("Text");
-        textGO.transform.SetParent(canvasGO.transform);
-        //textGO.transform.position = transform.position; //+ new Vector3(0, -_height / 2f + 100, 0);
+        // Configure canvas RectTransform
+        RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(2f, 1f); // World units
+        canvasRect.localPosition = Vector3.zero;   // Centered on this object
+        canvasRect.localScale = Vector3.one * 0.01f; // Scale down if needed
 
-        // Edit text object
+        // Create TextMeshProUGUI
+        GameObject textGO = new GameObject("Text");
+        textGO.transform.SetParent(canvasGO.transform, false);
+
         TextMeshProUGUI msg = textGO.AddComponent<TextMeshProUGUI>();
         msg.text = "Next";
         msg.fontSize = 36;
         msg.alignment = TextAlignmentOptions.Center;
         msg.color = Color.white;
-        // msg.rectTransform.anchoredPosition = transform.;
 
-        // Set RectTransform position and size
+        // Position and size of the text
         RectTransform rectTransform = msg.GetComponent<RectTransform>();
         rectTransform.sizeDelta = new Vector2(600, 200);
+        rectTransform.localPosition = new Vector3(centX,0,0); // Centered within canvas
+
     }
 
     public void UpdatePreview(int[] list)
