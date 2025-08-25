@@ -9,6 +9,7 @@ public class InitializeGrids : MonoBehaviour
     [SerializeField] private GameObject _gridBackgroundPrefab;
     [SerializeField] private GameObject _previewPrefab;
     [SerializeField] private GameObject _previewBackgroundPrefab;
+    [SerializeField] private GameObject _outlinePrefab;
 
     [SerializeField] private GameObject _pieceController;
 
@@ -82,6 +83,15 @@ public class InitializeGrids : MonoBehaviour
         previewBackground.transform.localScale = Vector3.one;
         previewBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
         dict.Add("previewBackground", previewBackground);
+
+        // Create a new outline object
+        GameObject outlinePreview = Instantiate(_outlinePrefab);
+        outlinePreview.name = $"OutlineBackground_{playerId}";
+        outlinePreview.transform.SetParent(player.transform, false);
+        outlinePreview.transform.localPosition = Vector3.zero;
+        outlinePreview.transform.localScale = Vector3.one;
+        outlinePreview.GetComponent<SpriteRenderer>().sortingOrder = 1;
+        dict.Add("outline", previewBackground);
 
         return dict;
     }

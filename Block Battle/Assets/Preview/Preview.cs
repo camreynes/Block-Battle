@@ -19,8 +19,6 @@ public class Preview : MonoBehaviour
 
     [SerializeField] private GameObject[] _pieces;
 
-
-
     public void InitializeSelf()
     {
         // SpriteRenderer bounds setup
@@ -71,19 +69,19 @@ public class Preview : MonoBehaviour
         canvasRect.localScale = Vector3.one * 0.01f; // Scale down if needed
 
         // Create TextMeshProUGUI
-        GameObject textGO = new GameObject("Text");
-        textGO.transform.SetParent(canvasGO.transform, false);
+        //GameObject textGO = new GameObject("Text");
+        //textGO.transform.SetParent(canvasGO.transform, false);
 
-        TextMeshProUGUI msg = textGO.AddComponent<TextMeshProUGUI>();
-        msg.text = "Next";
-        msg.fontSize = 36;
-        msg.alignment = TextAlignmentOptions.Center;
-        msg.color = Color.white;
+        //TextMeshProUGUI msg = textGO.AddComponent<TextMeshProUGUI>();
+        //msg.text = "Next";
+        //msg.fontSize = 36;
+        //msg.alignment = TextAlignmentOptions.Center;
+        //msg.color = Color.white;
 
         // Position and size of the text
-        RectTransform rectTransform = msg.GetComponent<RectTransform>();
-        rectTransform.sizeDelta = new Vector2(600, 200);
-        rectTransform.localPosition = new Vector3(centX,0,0); // Centered within canvas
+        //RectTransform rectTransform = msg.GetComponent<RectTransform>();
+        //rectTransform.sizeDelta = new Vector2(600, 200);
+        //rectTransform.localPosition = new Vector3(centX,0,0); // Centered within canvas
 
     }
 

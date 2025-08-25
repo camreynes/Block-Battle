@@ -8,6 +8,10 @@ public class PieceController : MonoBehaviour
 {
     
     [SerializeField] private GameObject[] _tetrominoPrefab;
+    [SerializeField] private GameObject _outlinePrefab;
+    private GameObject[] _outlines = new GameObject[4];
+
+    [SerializeField] private SpriteRenderer[] _outlineSprites;
     [SerializeField] protected BlockGrid _grid;
 
     private List<Tuple<int,GameObject>> _pieceOrder = new List<Tuple<int,GameObject>>();
@@ -64,7 +68,7 @@ public class PieceController : MonoBehaviour
             _currentPiece.FinishDestory();
             _currentPiece = null;
         }
-
+        InitializeOutlines();
         SpawnPiece();
         _fallRoutine = StartCoroutine(BlockFall());
     }
@@ -90,19 +94,23 @@ public class PieceController : MonoBehaviour
             _recentlyMoved = _currentPiece.TryMovePiece(DOWN);
 
         // PLAYER INPUTS - MOVEMENT
+        var actLeft = TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerID);
+        var actRight = TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, _playerID);
+        var actDown = TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, _playerID);
+
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, _playerID))
             OnMoveStart(LEFT);
-        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerID).WasReleasedThisFrame())
+        if (actLeft != null && actLeft.WasReleasedThisFrame())
             OnMoveEnd(LEFT);
 
         if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerID))
             OnMoveStart(RIGHT);
-        if (TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, _playerID).WasReleasedThisFrame())
+        if (actRight != null && actRight.WasReleasedThisFrame())
             OnMoveEnd(RIGHT);
 
         if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, _playerID))
             OnMoveStart(DOWN);
-        if (TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, _playerID).WasReleasedThisFrame())
+        if (actDown != null && actDown.WasReleasedThisFrame())
             OnMoveEnd(DOWN);
 
         if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerID))
@@ -219,6 +227,18 @@ public class PieceController : MonoBehaviour
         SetBlocksInactive();
     }
 
+    // -----------------------PIECE OUTLINES-----------------------
+
+    private void InitializeOutlines()
+    {
+        for (int i = 0; i < 4; i++) // If I were to add more pieces, I would change this value to max number of pieces and pool unused pieces
+        {
+            GameObject obj = Instantiate(_outlinePrefab);
+            obj.transform.SetParent(transform);
+            _outlines[i] = obj;
+        }
+    }
+
     // -----------------------PRIVATE IENUMERATOR (AND HELPERS)-----------------------
 
     private IEnumerator BlockFall()
@@ -272,7 +292,7 @@ public class PieceController : MonoBehaviour
             //Debug.Log(timer);
             if (_recentlyMoved && !newMovePossible)
             {
-                newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(1, 0));
+                newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(0, -1));
                 currentMaxtime = Math.Min(currentMaxtime + _lockDelay - lastLockDelay, _maxLockDelay);
                 lastLockDelay = .5f;
             }
