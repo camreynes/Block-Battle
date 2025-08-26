@@ -8,10 +8,6 @@ public class PieceController : MonoBehaviour
 {
     
     [SerializeField] private GameObject[] _tetrominoPrefab;
-    [SerializeField] private GameObject _outlinePrefab;
-    private GameObject[] _outlines = new GameObject[4];
-
-    [SerializeField] private SpriteRenderer[] _outlineSprites;
     [SerializeField] protected BlockGrid _grid;
 
     private List<Tuple<int,GameObject>> _pieceOrder = new List<Tuple<int,GameObject>>();
@@ -30,16 +26,16 @@ public class PieceController : MonoBehaviour
 
     private bool _recentlyMoved = false;
     private bool _forceHardDrop = false;
-    private bool _firstPiece = true; // Is first piece spawned?
     [SerializeField] private bool _setPiece = false; // Used to determine if we are using only one hardset piece
     [SerializeField] private bool _stagePreset = false;
 
     private Preview _preview;
+    private Outline _outline;
+    private PieceType _pieceType;
 
     private static readonly Vector2Int LEFT = new Vector2Int(-1, 0);
     private static readonly Vector2Int RIGHT = new Vector2Int(1, 0);
     private static readonly Vector2Int DOWN = new Vector2Int(0, -1);
-
 
     private Coroutine _fallRoutine;
 
@@ -68,7 +64,6 @@ public class PieceController : MonoBehaviour
             _currentPiece.FinishDestory();
             _currentPiece = null;
         }
-        InitializeOutlines();
         SpawnPiece();
         _fallRoutine = StartCoroutine(BlockFall());
     }
@@ -126,6 +121,9 @@ public class PieceController : MonoBehaviour
         if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerID)) {
             SaveScene();
         }
+
+        if (_recentlyMoved)
+            print("moved");
     }
 
     // -----------------------PRIVATE HELPERS-----------------------
@@ -227,18 +225,6 @@ public class PieceController : MonoBehaviour
         SetBlocksInactive();
     }
 
-    // -----------------------PIECE OUTLINES-----------------------
-
-    private void InitializeOutlines()
-    {
-        for (int i = 0; i < 4; i++) // If I were to add more pieces, I would change this value to max number of pieces and pool unused pieces
-        {
-            GameObject obj = Instantiate(_outlinePrefab);
-            obj.transform.SetParent(transform);
-            _outlines[i] = obj;
-        }
-    }
-
     // -----------------------PRIVATE IENUMERATOR (AND HELPERS)-----------------------
 
     private IEnumerator BlockFall()
@@ -332,6 +318,8 @@ public class PieceController : MonoBehaviour
     public void SetGrid(BlockGrid grid) { _grid = grid; }
 
     public void SetPreview(Preview preview) { _preview = preview; }
+
+    public void SetOutline(Outline outline) { _outline = outline; }
 
     public void SetPlayerID(int id) { _playerID = id; }
 

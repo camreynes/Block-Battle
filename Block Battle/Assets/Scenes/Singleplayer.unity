@@ -3433,6 +3433,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db51a6f66609be34ab7050db54cb5b18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _outlineSprites:
+  - {fileID: 2072789893}
+  - {fileID: 2017496787}
+  - {fileID: 103487516}
+  - {fileID: 1404829695}
+  - {fileID: 795186516}
+  - {fileID: 835320720}
+  - {fileID: 1912924203}
 --- !u!1001 &1860770145
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -87,10 +87,12 @@ public class InitializeGrids : MonoBehaviour
         // Create a new outline object
         GameObject outlinePreview = Instantiate(_outlinePrefab);
         outlinePreview.name = $"OutlineBackground_{playerId}";
-        outlinePreview.transform.SetParent(player.transform, false);
+        outlinePreview.transform.SetParent(player.transform, true);
         outlinePreview.transform.localPosition = Vector3.zero;
         outlinePreview.transform.localScale = Vector3.one;
-        outlinePreview.GetComponent<SpriteRenderer>().sortingOrder = 1;
+        pieceController.GetComponent<PieceController>().SetOutline(outlinePreview.GetComponent<Outline>());
+        outlinePreview.GetComponent<Outline>().InitializeSelf();
+
         dict.Add("outline", previewBackground);
 
         return dict;
