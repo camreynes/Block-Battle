@@ -111,6 +111,22 @@ public class PieceScript : MonoBehaviour
         return false;
     }
 
+    // -----------------------OUTLINES-----------------------
+
+    // <summary>Variation of tryMovePice for outlines.</summary>'
+    public Vector2Int[] GetOutlineVectors()
+    {
+        Vector2Int[] newPositions = CreateOffsetVectors(0,-1,_positions);
+        while (true)
+        {
+            if (CheckBlockLocations(newPositions)) { 
+                newPositions = CreateOffsetVectors(0, -1, _positions);
+            }
+            break;
+        }
+        return newPositions;
+    }
+
     // -----------------------ROTATING BLOCKS-----------------------
 
     public bool TryRotateCW()
@@ -285,9 +301,17 @@ public class PieceScript : MonoBehaviour
         Destroy(gameObject); // Destroy the parent piece game object after it has been placed
     }
 
+
     // -----------------------SAVING-----------------------
 
     // -----------------------DEBUGGING-----------------------
 
+    public Vector2Int[] GetPositions()
+    {
+        if (_positions == null) return Array.Empty<Vector2Int>();
+        var copy = new Vector2Int[_positions.Length];
+        Array.Copy(_positions, copy, _positions.Length);
+        return copy;
+    }
 
 }

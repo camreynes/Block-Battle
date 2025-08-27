@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -13,6 +14,8 @@ public class PieceController : MonoBehaviour
     private List<Tuple<int,GameObject>> _pieceOrder = new List<Tuple<int,GameObject>>();
     private List<Tuple<int,GameObject>> _tempPieceList = new List<Tuple<int,GameObject>>();
 
+    private Vector2Int[] _lastPositions;
+
     private float _timeToFall = .8f;
     private float _lockDelay = .5f;
     private float _maxLockDelay = 1.5f;
@@ -24,14 +27,13 @@ public class PieceController : MonoBehaviour
     private HoldState _holdRight;
     private HoldState _holdDown;
 
-    private bool _recentlyMoved = false;
+    private bool _recentlyMovedByPlayer = false;
     private bool _forceHardDrop = false;
     [SerializeField] private bool _setPiece = false; // Used to determine if we are using only one hardset piece
     [SerializeField] private bool _stagePreset = false;
 
     private Preview _preview;
     private Outline _outline;
-    private PieceType _pieceType;
 
     private static readonly Vector2Int LEFT = new Vector2Int(-1, 0);
     private static readonly Vector2Int RIGHT = new Vector2Int(1, 0);
@@ -73,20 +75,30 @@ public class PieceController : MonoBehaviour
     {
         if (_currentPiece == null)
             return;
+
+        var currentPositions = _currentPiece.GetPositions();
+        if (_recentlyMovedByPlayer && _lastPositions != null && !_lastPositions.SequenceEqual(currentPositions))
+        {
+            // piece actually changed grid cells (move or rotate)
+            _outline.UpdateOutline(currentPositions, _currentPiece.GetPieceType());
+        }
+        _lastPositions = currentPositions; // keep the latest snapshot
+
+
         //if (_recentlyMoved)
         //    Debug.Log("Moved");
         // HOLDING ACCELERATED MOVEMENT
-        _recentlyMoved = false;
+        _recentlyMovedByPlayer = false;
         bool leftHeld = _holdLeft.IsHolding;
         bool rightHeld = _holdRight.IsHolding;
         bool downHeld = _holdDown.IsHolding;
 
         if (leftHeld && !rightHeld && _holdLeft.ShouldRepeat())
-            _recentlyMoved = _currentPiece.TryMovePiece(LEFT);
+            _recentlyMovedByPlayer = _currentPiece.TryMovePiece(LEFT);
         else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
-            _recentlyMoved = _currentPiece.TryMovePiece(RIGHT);
+            _recentlyMovedByPlayer = _currentPiece.TryMovePiece(RIGHT);
         if (downHeld && _holdDown.ShouldRepeat())
-            _recentlyMoved = _currentPiece.TryMovePiece(DOWN);
+            _recentlyMovedByPlayer = _currentPiece.TryMovePiece(DOWN);
 
         // PLAYER INPUTS - MOVEMENT
         var actLeft = TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerID);
@@ -113,17 +125,14 @@ public class PieceController : MonoBehaviour
 
         // PLAYER INPUTS - ROTATIONS
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, _playerID))
-            _recentlyMoved = _currentPiece.TryRotateCW();
+            _recentlyMovedByPlayer = _currentPiece.TryRotateCW();
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerID))
-            _recentlyMoved = _currentPiece.TryRotateCCW();
+            _recentlyMovedByPlayer = _currentPiece.TryRotateCCW();
 
         // PLAYER INPUTS - TESTING
         if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerID)) {
             SaveScene();
         }
-
-        if (_recentlyMoved)
-            print("moved");
     }
 
     // -----------------------PRIVATE HELPERS-----------------------
@@ -163,7 +172,7 @@ public class PieceController : MonoBehaviour
             _holdRight.StartHold();
         else if (direction.y < 0)
             _holdDown.StartHold();
-        _recentlyMoved = true;
+        _recentlyMovedByPlayer = true;
     }
 
     // Function to set hold states false, appended to move end
@@ -216,6 +225,7 @@ public class PieceController : MonoBehaviour
 
         //PrintVector2Array(_initialPositions);
         _currentPiece.SpawnBlocks(initialPositions);
+        _outline.UpdateOutline(_currentPiece.GetPositions(), _currentPiece.GetPieceType()); //extra call to update outline on spawn
     }
 
     private void HardDrop()
@@ -276,7 +286,7 @@ public class PieceController : MonoBehaviour
         while (timer < currentMaxtime && !_forceHardDrop)
         {
             //Debug.Log(timer);
-            if (_recentlyMoved && !newMovePossible)
+            if (_recentlyMovedByPlayer && !newMovePossible)
             {
                 newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(0, -1));
                 currentMaxtime = Math.Min(currentMaxtime + _lockDelay - lastLockDelay, _maxLockDelay);
