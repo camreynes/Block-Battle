@@ -80,7 +80,7 @@ public class PieceController : MonoBehaviour
         if (_recentlyMovedByPlayer && _lastPositions != null && !_lastPositions.SequenceEqual(currentPositions))
         {
             // piece actually changed grid cells (move or rotate)
-            _outline.UpdateOutline(currentPositions, _currentPiece.GetPieceType());
+            _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType());
         }
         _lastPositions = currentPositions; // keep the latest snapshot
 
@@ -225,7 +225,7 @@ public class PieceController : MonoBehaviour
 
         //PrintVector2Array(_initialPositions);
         _currentPiece.SpawnBlocks(initialPositions);
-        _outline.UpdateOutline(_currentPiece.GetPositions(), _currentPiece.GetPieceType()); //extra call to update outline on spawn
+        _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType()); //extra call to update outline on spawn
     }
 
     private void HardDrop()

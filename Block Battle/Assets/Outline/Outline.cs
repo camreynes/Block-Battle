@@ -30,6 +30,12 @@ public class Outline : MonoBehaviour
             ChangeSprites((int)type);
             _type = type;
         }
+        for (int i = 0; i < 4; i++)
+        {
+            float x = _grid.GetPosInGrid(positions[i].x, positions[i].y).x;
+            float y = _grid.GetPosInGrid(positions[i].x, positions[i].y).y;
+            _outlines[i].transform.position = new Vector2(x, y);
+        }
     }
 
     private void ChangeSprites(int spriteNum)

@@ -116,15 +116,16 @@ public class PieceScript : MonoBehaviour
     // <summary>Variation of tryMovePice for outlines.</summary>'
     public Vector2Int[] GetOutlineVectors()
     {
+        Vector2Int[] ret = _positions;
         Vector2Int[] newPositions = CreateOffsetVectors(0,-1,_positions);
         while (true)
         {
-            if (CheckBlockLocations(newPositions)) { 
-                newPositions = CreateOffsetVectors(0, -1, _positions);
-            }
-            break;
+            if (CheckBlockLocations(newPositions)) {
+                ret = newPositions;
+                newPositions = CreateOffsetVectors(0, -1, newPositions);
+            } else { break; }
         }
-        return newPositions;
+        return ret;
     }
 
     // -----------------------ROTATING BLOCKS-----------------------
