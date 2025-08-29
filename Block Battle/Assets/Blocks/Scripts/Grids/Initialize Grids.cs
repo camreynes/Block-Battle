@@ -10,6 +10,10 @@ public class InitializeGrids : MonoBehaviour
     [SerializeField] private GameObject _previewPrefab;
     [SerializeField] private GameObject _previewBackgroundPrefab;
     [SerializeField] private GameObject _outlinePrefab;
+    [SerializeField] private GameObject _holdPrefab;
+    [SerializeField] private GameObject _holdBackgroundPrefab;
+
+
 
     [SerializeField] private GameObject _pieceController;
 
@@ -93,8 +97,29 @@ public class InitializeGrids : MonoBehaviour
         pieceController.GetComponent<PieceController>().SetOutline(outlinePreview.GetComponent<Outline>());
         outlinePreview.GetComponent<Outline>().InitializeSelf();
         outlinePreview.GetComponent<Outline>().SetGrid(grid.GetComponent<BlockGrid>());
-
         dict.Add("outline", previewBackground);
+
+        // Create a new hold window
+        GameObject hold = Instantiate(_holdPrefab);
+        hold.name = $"Hold_{playerId}";
+        hold.transform.SetParent(player.transform, true);
+        float holdX = gridX - gridWidth * 0.05f;
+        float holdY = gridY + gridHeight;
+        hold.transform.localPosition = new Vector3(prevX, prevY, 0f);
+        hold.transform.localScale = new Vector3(_defaultGridScale.x * .65f, _defaultGridScale.y * .65f, 1f);
+        hold.GetComponent<SpriteRenderer>().sortingOrder = 2;
+        pieceController.GetComponent<PieceController>().Sethold(hold.GetComponent<hold>());
+        hold.GetComponent<hold>().InitializeSelf();
+        dict.Add("hold", hold);
+
+        // Create a new hold background
+        GameObject holdBackground = Instantiate(_holdBackgroundPrefab);
+        holdBackground.name = $"holdBackground_{playerId}";
+        holdBackground.transform.SetParent(hold.transform, false);
+        holdBackground.transform.localPosition = Vector3.zero;
+        holdBackground.transform.localScale = Vector3.one;
+        holdBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
+        dict.Add("holdBackground", holdBackground);
 
         return dict;
     }
