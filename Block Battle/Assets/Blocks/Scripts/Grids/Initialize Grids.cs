@@ -113,13 +113,13 @@ public class InitializeGrids : MonoBehaviour
         dict.Add("hold", hold);
 
         // Create a new hold background
-        GameObject holdBackground = Instantiate(_holdBackgroundPrefab);
-        holdBackground.name = $"holdBackground_{playerId}";
-        holdBackground.transform.SetParent(hold.transform, false);
-        holdBackground.transform.localPosition = Vector3.zero;
-        holdBackground.transform.localScale = Vector3.one;
-        holdBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
-        dict.Add("holdBackground", holdBackground);
+        //GameObject holdBackground = Instantiate(_holdBackgroundPrefab);
+        //holdBackground.name = $"holdBackground_{playerId}";
+        //holdBackground.transform.SetParent(hold.transform, false);
+        //holdBackground.transform.localPosition = Vector3.zero;
+        //holdBackground.transform.localScale = Vector3.one;
+        //holdBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
+        //dict.Add("holdBackground", holdBackground);
 
         return dict;
     }
