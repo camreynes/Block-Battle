@@ -7,12 +7,12 @@ using UnityEngine;
 // Class that handles piece spawning, roations, movements, etc.
 public class PieceController : MonoBehaviour
 {
-    
+
     [SerializeField] private GameObject[] _tetrominoPrefab;
     [SerializeField] protected BlockGrid _grid;
 
-    private List<Tuple<int,GameObject>> _pieceOrder = new List<Tuple<int,GameObject>>();
-    private List<Tuple<int,GameObject>> _tempPieceList = new List<Tuple<int,GameObject>>();
+    private List<Tuple<int, GameObject>> _pieceOrder = new List<Tuple<int, GameObject>>();
+    private List<Tuple<int, GameObject>> _tempPieceList = new List<Tuple<int, GameObject>>();
 
     private Vector2Int[] _lastPositions;
 
@@ -22,6 +22,7 @@ public class PieceController : MonoBehaviour
 
     private PieceScript _currentPiece;
     private int _playerID = -1; // Player ID for input mapping, will make dynamic later
+    private int _spawnHeld = -1; // To determine if we are spawning a held piece, if so what piece type
 
     private HoldState _holdLeft;
     private HoldState _holdRight;
@@ -29,11 +30,13 @@ public class PieceController : MonoBehaviour
 
     private bool _recentlyMovedByPlayer = false;
     private bool _forceHardDrop = false;
+    private bool _recentlyHeld = false; // To prevent multiple holds in one turn
     [SerializeField] private bool _setPiece = false; // Used to determine if we are using only one hardset piece
     [SerializeField] private bool _stagePreset = false;
 
     private Preview _preview;
     private Outline _outline;
+    private Hold _hold;
 
     private static readonly Vector2Int LEFT = new Vector2Int(-1, 0);
     private static readonly Vector2Int RIGHT = new Vector2Int(1, 0);
@@ -52,7 +55,8 @@ public class PieceController : MonoBehaviour
 
     private void Start()
     {
-        if (_stagePreset) {  // Special conditions if we are using a preset stage
+        if (_stagePreset)
+        {  // Special conditions if we are using a preset stage
             Global.GetPreset();
             GameObject pieceObj = Instantiate(_tetrominoPrefab[1]);
             _currentPiece = pieceObj.GetComponent<PieceScript>();
@@ -129,13 +133,22 @@ public class PieceController : MonoBehaviour
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerID))
             _recentlyMovedByPlayer = _currentPiece.TryRotateCCW();
 
+        // PLAYER INPUTS - HOLD
+        if (TetrixInputManager.WasPressed(GameInputAction.HOLD, _playerID))
+        {
+            HoldPiece();
+        }
+
         // PLAYER INPUTS - TESTING
-        if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerID)) {
+        if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerID))
+        {
             SaveScene();
         }
     }
 
     // -----------------------PRIVATE HELPERS-----------------------
+
+
 
     // -----------------------PIECE ORDER-----------------------
 
@@ -159,6 +172,22 @@ public class PieceController : MonoBehaviour
     }
 
     // -----------------------MOVE HELPERS-----------------------
+    private void HardDrop()
+    {
+        _forceHardDrop = true;
+        _currentPiece?.HardDrop();
+        SetBlocksInactive();
+    }
+
+    private void HoldPiece()
+    {
+        if (_recentlyHeld || _currentPiece == null) // Prevent multiple holds in one turn
+            return;
+        _recentlyHeld = true;
+        _spawnHeld = _hold.UpdateHold((int)_currentPiece.GetPieceType());
+        Destroy(_currentPiece.gameObject);
+        _currentPiece = null;
+    }
 
     // Function to set hold states, only needed for keys that can be presse (move left, right and down)
     private void OnMoveStart(Vector2Int direction)
@@ -197,8 +226,12 @@ public class PieceController : MonoBehaviour
         // Random(ish) Piece Order
         if (_pieceOrder.Count <= 5)
             CreateNewOrder();
-
-        if (_setPiece) // If we are using a set piece, we only spawn one piece
+        if (_spawnHeld >= 0) // If we are using a set piece, we only spawn one piece
+        {
+            pieceObj = Instantiate(_tetrominoPrefab[_spawnHeld]);
+            _spawnHeld = -1;
+        }
+        else if (_setPiece) // If we are using a set piece, we only spawn one piece
             pieceObj = Instantiate(_tetrominoPrefab[5]);
         else
         {
@@ -226,13 +259,6 @@ public class PieceController : MonoBehaviour
         //PrintVector2Array(_initialPositions);
         _currentPiece.SpawnBlocks(initialPositions);
         _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType()); //extra call to update outline on spawn
-    }
-
-    private void HardDrop()
-    {
-        _forceHardDrop = true;
-        _currentPiece?.HardDrop();
-        SetBlocksInactive();
     }
 
     // -----------------------PRIVATE IENUMERATOR (AND HELPERS)-----------------------
@@ -266,12 +292,12 @@ public class PieceController : MonoBehaviour
     private IEnumerator WaitAndFall()
     {
         float timer = 0f;
-        while (timer < _timeToFall && !_forceHardDrop)
+        while (timer < _timeToFall && !_forceHardDrop && _currentPiece != null)
         {
             timer += Time.deltaTime;
             yield return null;
         }
-        if (!_forceHardDrop)
+        if (!_forceHardDrop && _currentPiece != null)
             _currentPiece.TryMovePiece(DOWN);
     }
 
@@ -309,9 +335,9 @@ public class PieceController : MonoBehaviour
     private IEnumerator SetBlocksInactive()
     {
         if (_currentPiece == null)
-            yield return null; // No current piece to set inactive
+            yield break; // No current piece to set inactive
 
-        
+
         bool isFull = _currentPiece.SetBlocksInactive(gameObject);
         if (isFull)
         {
@@ -320,12 +346,15 @@ public class PieceController : MonoBehaviour
         }
 
         _currentPiece = null;
-        yield return null;
+        _recentlyHeld = false; // Reset hold ability
+        yield break;
     }
 
     // -----------------------PUBLIC METHODS-----------------------
 
     public void SetGrid(BlockGrid grid) { _grid = grid; }
+
+    public void SetHold(Hold hold) { _hold = hold; ; }
 
     public void SetPreview(Preview preview) { _preview = preview; }
 

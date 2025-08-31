@@ -17,7 +17,14 @@ public class Preview : MonoBehaviour
     private GameObject _piece3;
     private GameObject _piece4;
 
+    private SpriteRenderer s1;
+    private SpriteRenderer s2;
+    private SpriteRenderer s3;
+    private SpriteRenderer s4;
+
     [SerializeField] private GameObject[] _pieces;
+    private Sprite[] _sprites = new Sprite[7];
+
 
     public void InitializeSelf()
     {
@@ -41,15 +48,24 @@ public class Preview : MonoBehaviour
 
         _piece1 = Instantiate(_pieces[0], _next1, Quaternion.identity);
         _piece1.transform.SetParent(transform, false);
+        s1 = _piece1.GetComponent<SpriteRenderer>();
 
         _piece2 = Instantiate(_pieces[1], _next2, Quaternion.identity);
         _piece2.transform.SetParent(transform, false);
+        s2 = _piece2.GetComponent<SpriteRenderer>();
 
         _piece3 = Instantiate(_pieces[2], _next3, Quaternion.identity);
         _piece3.transform.SetParent(transform, false);
+        s3 = _piece3.GetComponent<SpriteRenderer>();
 
         _piece4 = Instantiate(_pieces[3], _next4, Quaternion.identity);
         _piece4.transform.SetParent(transform, false);
+        s4 = _piece4.GetComponent<SpriteRenderer>();
+
+        for (int i = 0; i < _pieces.Length; i++)
+        {
+            _sprites[i] = _pieces[i].GetComponent<SpriteRenderer>().sprite;
+        }
 
         // Create World Space Canvas
         GameObject canvasGO = new GameObject("Canvas");
@@ -67,30 +83,14 @@ public class Preview : MonoBehaviour
         canvasRect.sizeDelta = new Vector2(2f, 1f); // World units
         canvasRect.localPosition = Vector3.zero;   // Centered on this object
         canvasRect.localScale = Vector3.one * 0.01f; // Scale down if needed
-
-        // Create TextMeshProUGUI
-        //GameObject textGO = new GameObject("Text");
-        //textGO.transform.SetParent(canvasGO.transform, false);
-
-        //TextMeshProUGUI msg = textGO.AddComponent<TextMeshProUGUI>();
-        //msg.text = "Next";
-        //msg.fontSize = 36;
-        //msg.alignment = TextAlignmentOptions.Center;
-        //msg.color = Color.white;
-
-        // Position and size of the text
-        //RectTransform rectTransform = msg.GetComponent<RectTransform>();
-        //rectTransform.sizeDelta = new Vector2(600, 200);
-        //rectTransform.localPosition = new Vector3(centX,0,0); // Centered within canvas
-
     }
 
     public void UpdatePreview(int[] list)
     {
-        _piece1.GetComponent<SpriteRenderer>().sprite = _pieces[list[0]].GetComponent<SpriteRenderer>().sprite;
-        _piece2.GetComponent<SpriteRenderer>().sprite = _pieces[list[1]].GetComponent<SpriteRenderer>().sprite;
-        _piece3.GetComponent<SpriteRenderer>().sprite = _pieces[list[2]].GetComponent<SpriteRenderer>().sprite;
-        _piece4.GetComponent<SpriteRenderer>().sprite = _pieces[list[3]].GetComponent<SpriteRenderer>().sprite;
+        s1.sprite = _sprites[list[0]];
+        s2.sprite = _sprites[list[1]];
+        s3.sprite = _sprites[list[2]];
+        s4.sprite = _sprites[list[3]];
     }
     
 

@@ -105,21 +105,21 @@ public class InitializeGrids : MonoBehaviour
         hold.transform.SetParent(player.transform, true);
         float holdX = gridX - gridWidth * 0.05f;
         float holdY = gridY + gridHeight;
-        hold.transform.localPosition = new Vector3(prevX, prevY, 0f);
+        hold.transform.localPosition = new Vector3(holdX, holdY, 0f);
         hold.transform.localScale = new Vector3(_defaultGridScale.x * .65f, _defaultGridScale.y * .65f, 1f);
         hold.GetComponent<SpriteRenderer>().sortingOrder = 2;
-        pieceController.GetComponent<PieceController>().Sethold(hold.GetComponent<hold>());
-        hold.GetComponent<hold>().InitializeSelf();
+        pieceController.GetComponent<PieceController>().SetHold(hold.GetComponent<Hold>());
+        hold.GetComponent<Hold>().InitializeSelf();
         dict.Add("hold", hold);
 
         // Create a new hold background
-        //GameObject holdBackground = Instantiate(_holdBackgroundPrefab);
-        //holdBackground.name = $"holdBackground_{playerId}";
-        //holdBackground.transform.SetParent(hold.transform, false);
-        //holdBackground.transform.localPosition = Vector3.zero;
-        //holdBackground.transform.localScale = Vector3.one;
-        //holdBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
-        //dict.Add("holdBackground", holdBackground);
+        GameObject holdBackground = Instantiate(_holdBackgroundPrefab);
+        holdBackground.name = $"holdBackground_{playerId}";
+        holdBackground.transform.SetParent(hold.transform, false);
+        holdBackground.transform.localPosition = Vector3.zero;
+        holdBackground.transform.localScale = Vector3.one;
+        holdBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
+        dict.Add("holdBackground", holdBackground);
 
         return dict;
     }

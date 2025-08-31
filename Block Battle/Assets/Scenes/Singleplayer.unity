@@ -484,6 +484,8 @@ Transform:
   - {fileID: 1654560700}
   - {fileID: 763462841}
   - {fileID: 1839129209}
+  - {fileID: 666272291}
+  - {fileID: 2084896472}
   m_Father: {fileID: 1667112047}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &481053003
@@ -1091,7 +1093,7 @@ GameObject:
   - component: {fileID: 666272291}
   - component: {fileID: 666272290}
   m_Layer: 0
-  m_Name: hold_background_0
+  m_Name: Hold Background
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1142,7 +1144,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: -6203700064084919882, guid: f2e2a8845e27d7a488951781b540f46b, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.14901961, g: 0.14901961, b: 0.14901961, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -1160,12 +1162,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 666272289}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -5.257147, y: -7.1414747, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -12.036, y: -4.445, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 477474997}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &666882619
 GameObject:
@@ -2149,7 +2151,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1471508037}
   m_Layer: 0
-  m_Name: Preview Pieces
+  m_Name: Preview/Hold Pieces
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3215,8 +3217,8 @@ MonoBehaviour:
   _previewPrefab: {fileID: 1654560699}
   _previewBackgroundPrefab: {fileID: 763462840}
   _outlinePrefab: {fileID: 1839129208}
-  _holdPrefab: {fileID: 0}
-  _holdBackgroundPrefab: {fileID: 0}
+  _holdPrefab: {fileID: 2084896470}
+  _holdBackgroundPrefab: {fileID: 666272289}
   _pieceController: {fileID: 577242445}
 --- !u!1 &2072789892 stripped
 GameObject:
@@ -3295,8 +3297,9 @@ GameObject:
   m_Component:
   - component: {fileID: 2084896472}
   - component: {fileID: 2084896471}
+  - component: {fileID: 2084896473}
   m_Layer: 0
-  m_Name: hold_display_0
+  m_Name: Hold Display
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3345,8 +3348,8 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_Sprite: {fileID: 2198786388298562761, guid: 07110aece63a28845a78e9f8fab2b8f4, type: 3}
+  m_SortingOrder: 1
+  m_Sprite: {fileID: -4075760525611037480, guid: 2b3efa734baa5a5459433f16d22a37a7, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -3365,13 +3368,33 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2084896470}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.6348982, y: -7.246814, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -12.036, y: -4.445, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 477474997}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2084896473
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2084896470}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2daf9a6ce6da5164893b73596c82ebab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _pieces:
+  - {fileID: 524982874}
+  - {fileID: 1702305759}
+  - {fileID: 858500613}
+  - {fileID: 1343537370}
+  - {fileID: 1509189221}
+  - {fileID: 1667677586}
+  - {fileID: 526356581}
 --- !u!1 &2138438403 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7377928618032614626, guid: c11abf8f67f7e5541b907d448377a5ed, type: 3}
@@ -3491,5 +3514,3 @@ SceneRoots:
   - {fileID: 2048176819}
   - {fileID: 566611664}
   - {fileID: 1667112047}
-  - {fileID: 666272291}
-  - {fileID: 2084896472}

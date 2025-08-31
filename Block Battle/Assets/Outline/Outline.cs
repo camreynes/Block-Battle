@@ -25,7 +25,6 @@ public class Outline : MonoBehaviour
 
     public void UpdateOutline(Vector2Int[] positions, PieceType type)
     {
-        print(positions.Length);
         if (type != _type) {
             ChangeSprites((int)type);
             _type = type;
