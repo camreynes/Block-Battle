@@ -51,17 +51,19 @@ public class Hold : MonoBehaviour
         txt.transform.SetParent(transform, false);
         txt.transform.localPosition = new Vector3(-centX, .12f, 3);
 
-        // 3. Add TextMeshPro component
+        // Add TextMeshPro component
         _worldText = txt.AddComponent<TextMeshPro>();
 
-        // 4. Configure text settings
-        _worldText.text = "Hold Piece";
+        // Configure text settings
         _worldText.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/hun2 SDF");
-        _worldText.fontSize = 2;                  // bigger so visible in world
+        _worldText.text = "Hold Piece";
+        _worldText.fontSize = 16;  // use generated font size
+        _worldText.transform.localScale = Vector3.one * 0.1f; // scale down to fit
         _worldText.color = Color.black;
         _worldText.alignment = TextAlignmentOptions.Center;
-        _worldText.characterSpacing = -.5f;
-
+        _worldText.enableKerning = true; // need to address P and I spacing eventually
+        _worldText.characterSpacing = -4f;
+        _worldText.fontStyle = TMPro.FontStyles.Bold;
     }
 
     /// <summary>
