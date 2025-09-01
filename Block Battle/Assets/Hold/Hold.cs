@@ -36,7 +36,7 @@ public class Hold : MonoBehaviour
 
         _heldPiece = new GameObject("heldPiece");
         _heldPiece.transform.SetParent(transform, false);
-        _heldPiece.transform.localPosition = new Vector3(-centX, -centY, 2);
+        _heldPiece.transform.localPosition = new Vector3(-centX, -centY, 0);
         _heldPiece.SetActive(true);
         spr = _heldPiece.AddComponent<SpriteRenderer>();
         spr.GetComponent<SpriteRenderer>().sortingOrder = 3;
@@ -49,16 +49,19 @@ public class Hold : MonoBehaviour
 
         GameObject txt = new GameObject("HoldText");
         txt.transform.SetParent(transform, false);
-        txt.transform.position = new Vector3(0, 3, 0);
+        txt.transform.localPosition = new Vector3(-centX, .12f, 3);
 
         // 3. Add TextMeshPro component
         _worldText = txt.AddComponent<TextMeshPro>();
 
         // 4. Configure text settings
-        _worldText.text = "Hello Unity!";
-        _worldText.fontSize = 5;                  // bigger so visible in world
-        _worldText.color = Color.yellow;
+        _worldText.text = "Hold Piece";
+        _worldText.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/hun2 SDF");
+        _worldText.fontSize = 2;                  // bigger so visible in world
+        _worldText.color = Color.black;
         _worldText.alignment = TextAlignmentOptions.Center;
+        _worldText.characterSpacing = -.5f;
+
     }
 
     /// <summary>
