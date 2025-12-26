@@ -29,6 +29,8 @@ public class PieceController : MonoBehaviour
     private HoldState _holdDown;
 
     private bool _recentlyMovedByPlayer = false;
+    private bool _recentlyRotatedByPlayer = false;
+    private bool _lastMoveRotate = false; // false = move, true = rotate (mostly for score detection)
     private bool _forceHardDrop = false;
     private bool _recentlyHeld = false; // To prevent multiple holds in one turn
     [SerializeField] private bool _setPiece = false; // Used to determine if we are using only one hardset piece
@@ -67,7 +69,8 @@ public class PieceController : MonoBehaviour
             _currentPiece.SpawnBlocks(initialPositions);
 
             _currentPiece.SetBlocksInactive(gameObject);
-            _currentPiece.FinishDestory();
+            PieceInfo _pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate);
+            _currentPiece.FinishDestory(_pieceInfo);
             _currentPiece = null;
         }
         SpawnPiece();
@@ -81,7 +84,7 @@ public class PieceController : MonoBehaviour
             return;
 
         var currentPositions = _currentPiece.GetPositions();
-        if (_recentlyMovedByPlayer && _lastPositions != null && !_lastPositions.SequenceEqual(currentPositions))
+        if ((_recentlyMovedByPlayer || _recentlyRotatedByPlayer) && _lastPositions != null && !_lastPositions.SequenceEqual(currentPositions))
         {
             // piece actually changed grid cells (move or rotate)
             _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType());
@@ -93,6 +96,7 @@ public class PieceController : MonoBehaviour
         //    Debug.Log("Moved");
         // HOLDING ACCELERATED MOVEMENT
         _recentlyMovedByPlayer = false;
+        _recentlyRotatedByPlayer = false;  
         bool leftHeld = _holdLeft.IsHolding;
         bool rightHeld = _holdRight.IsHolding;
         bool downHeld = _holdDown.IsHolding;
@@ -129,9 +133,9 @@ public class PieceController : MonoBehaviour
 
         // PLAYER INPUTS - ROTATIONS
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, _playerID))
-            _recentlyMovedByPlayer = _currentPiece.TryRotateCW();
+            _recentlyRotatedByPlayer = _currentPiece.TryRotateCW();
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerID))
-            _recentlyMovedByPlayer = _currentPiece.TryRotateCCW();
+            _recentlyRotatedByPlayer = _currentPiece.TryRotateCCW();
 
         // PLAYER INPUTS - HOLD
         if (TetrixInputManager.WasPressed(GameInputAction.HOLD, _playerID))
@@ -144,6 +148,11 @@ public class PieceController : MonoBehaviour
         {
             SaveScene();
         }
+
+        if (_recentlyMovedByPlayer)
+            _lastMoveRotate = false;
+        if (_recentlyRotatedByPlayer)
+            _lastMoveRotate = true;
     }
 
     // -----------------------PRIVATE HELPERS-----------------------
@@ -232,7 +241,7 @@ public class PieceController : MonoBehaviour
             _spawnHeld = -1;
         }
         else if (_setPiece) // If we are using a set piece, we only spawn one piece
-            pieceObj = Instantiate(_tetrominoPrefab[5]);
+            pieceObj = Instantiate(_tetrominoPrefab[4]);
         else
         {
             pieceObj = Instantiate(_pieceOrder[0].Item2);
@@ -312,7 +321,7 @@ public class PieceController : MonoBehaviour
         while (timer < currentMaxtime && !_forceHardDrop)
         {
             //Debug.Log(timer);
-            if (_recentlyMovedByPlayer && !newMovePossible)
+            if ((_recentlyMovedByPlayer || _recentlyRotatedByPlayer) && !newMovePossible)
             {
                 newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(0, -1));
                 currentMaxtime = Math.Min(currentMaxtime + _lockDelay - lastLockDelay, _maxLockDelay);
@@ -332,6 +341,11 @@ public class PieceController : MonoBehaviour
         }
     }
 
+
+    /// <summary>
+    /// Sets the blocks of the current piece to inactive and handles destruction if needed.
+    /// </summary>
+    /// <returns>IEnumerator</returns>
     private IEnumerator SetBlocksInactive()
     {
         if (_currentPiece == null)
@@ -341,12 +355,13 @@ public class PieceController : MonoBehaviour
         bool isFull = _currentPiece.SetBlocksInactive(gameObject);
         if (isFull)
         {
-            yield return new WaitForSeconds(Global.effectDuration);
+            yield return new WaitForSeconds(Global.effectDuration); // suspends the coroutine for duration of effect
             _currentPiece.FinishDestory();
         }
 
         _currentPiece = null;
         _recentlyHeld = false; // Reset hold ability
+
         yield break;
     }
 

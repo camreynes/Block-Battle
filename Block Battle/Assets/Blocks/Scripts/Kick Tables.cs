@@ -4,19 +4,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum PieceType
-{
-    Preset = -2,
-    None = -1,
-    J = 0,
-    L = 1,
-    S = 2,
-    Z = 3,
-    T = 4,
-    I = 5,
-    O = 6
-}
-
 // 0 = 0 spawn/0 degrees, 1 = right/90 degrees, 2 = reverse/180 degrees, 3 = left/270 degrees
 public static class KickTableManager
 {

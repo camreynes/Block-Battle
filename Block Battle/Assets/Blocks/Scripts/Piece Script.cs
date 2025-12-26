@@ -2,6 +2,29 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+public enum PieceType
+{
+    Preset = -2,
+    None = -1,
+    J = 0,
+    L = 1,
+    S = 2,
+    Z = 3,
+    T = 4,
+    I = 5,
+    O = 6
+}
+
+public class PieceInfo
+{
+    public PieceType pieceType;
+    public bool _lastMoveRotate;
+    public PieceInfo(PieceType type, bool lastMoveRotate)
+    {
+        pieceType = type;
+        _lastMoveRotate = lastMoveRotate;
+    }
+}
 
 public class PieceScript : MonoBehaviour
 {
@@ -295,10 +318,10 @@ public class PieceScript : MonoBehaviour
         return false;
     }
 
-    public void FinishDestory()
+    public void FinishDestory(PieceInfo info)
     {
         if (_rowsFull.Count > 0)
-            _blockGrid.ClearRows(_rowsFull);
+            _blockGrid.ClearRows(_rowsFull, info);
         Destroy(gameObject); // Destroy the parent piece game object after it has been placed
     }
 

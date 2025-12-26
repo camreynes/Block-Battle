@@ -7,7 +7,6 @@ public class Global : MonoBehaviour
     public static List<Vector2Int> scenePreset = new List<Vector2Int>();
 
     public static float effectDuration = .11f;
-
     public static void GetPreset()
     {
         scenePreset = SaveUtility.Load() ? scenePreset : new List<Vector2Int>();

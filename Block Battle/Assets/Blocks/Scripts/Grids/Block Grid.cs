@@ -163,7 +163,48 @@ public class BlockGrid : MonoBehaviour
         }
     }
 
-    public void ClearRows(List<int> fullRows)
+    private void CalculcateScore(List<Tuple<int, int, int>> rowsToShift, PieceInfo info)
+    {
+        int totalRowsCleared = 0;
+        for (int i = 0; i < rowsToShift.Count; i++)
+            totalRowsCleared += rowsToShift[i].Item3;
+
+        Debug.Log($"Total Rows Cleared: {totalRowsCleared}");
+
+        switch (totalRowsCleared)
+        {
+            case 1:
+                Debug.Log("Single");
+                break;
+            case 2:
+                Debug.Log("Single"); 
+                break;
+            case 3:
+                Debug.Log("Single"); 
+                break;
+            case 4:
+                Debug.Log("Tetris!");
+                break;
+            default:
+                break;
+        }
+    }
+
+    // helper method for detecting t-spins
+    private int getCornersOccupied()
+    {
+        int occupiedCorners = 0;
+
+
+
+        return 0;
+    }
+
+    /// <summary>
+    /// This method clears full rows and shifts down the above rows accordingly
+    /// </summary>
+    /// <param name="fullRows"></param>
+    public void ClearRows(List<int> fullRows, PieceInfo info)
     {
         // ---------- Clear Rows, Destroy Game Objects ----------
         for (int i = 0; i < fullRows.Count; i++)
@@ -189,6 +230,9 @@ public class BlockGrid : MonoBehaviour
             //Debug.Log($"Row: {i}, y1: {y1}, y2: {y2}");
             rowsToShift.Add(new Tuple<int, int, int>(y1, y2, i + 1));
         }
+
+        CalculcateScore(rowsToShift, info);
+
         ShiftRows(rowsToShift);
     }
 
