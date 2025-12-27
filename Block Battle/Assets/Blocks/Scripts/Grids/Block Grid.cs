@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -12,18 +13,19 @@ public class BlockGrid : MonoBehaviour
     //public (float, float)[,] positions = new (float, float)[20, 10]; // 20x10 grid filled with tuples representing the bottom left positions of each space
     private double _width = 0.449481296539307;
     private double _height = 0.447401666641235;
-    private Vector2 _position; //represents bottom left position of the grid
     private int _rows = 20;
     private int _cols = 10;
     private int _playerID;
-
-    public Vector2 scale = new Vector2(0, 0);
-
     private int _maxHeight = 20;
     private int _spaceUsed = 0; // Tracks the top most block being used
+    private int[] _blockCount = new int[20]; // Tracks the number of blocks in each row
+    private int _scoreStreak = 0;
+
+    private Vector2 _position; //represents bottom left position of the grid
+    public Vector2 scale = new Vector2(0, 0);
+
     private GameObject[][] _blocksInGrid = new GameObject[20][]; // Initialize array of gameObjects (cubes) representning the filled array
     private GameObject[] _parentRows = new GameObject[20]; // Tracks the number of blocks in each row
-    private int[] _blockCount = new int[20]; // Tracks the number of blocks in each row
 
 
     //private void Awake()
@@ -163,12 +165,20 @@ public class BlockGrid : MonoBehaviour
         }
     }
 
+    public void ResetScoreStreak()
+    {
+        _scoreStreak = 0;
+    }
+    public void IncrementScore()
+    {
+        _scoreStreak++;
+    }
+
     private void CalculcateScore(List<Tuple<int, int, int>> rowsToShift, PieceInfo info)
     {
         int totalRowsCleared = 0;
         for (int i = 0; i < rowsToShift.Count; i++)
             totalRowsCleared += rowsToShift[i].Item3;
-
         Debug.Log($"Total Rows Cleared: {totalRowsCleared}");
 
         switch (totalRowsCleared)
@@ -177,10 +187,18 @@ public class BlockGrid : MonoBehaviour
                 Debug.Log("Single");
                 break;
             case 2:
-                Debug.Log("Single"); 
+                int numCorners = GetCornersOccupied(info.centerPos);
+                if (info.pieceType == PieceType.T && info.lastMoveRotate && numCorners == 3)
+                    Debug.Log("T-Spin Double!");
+                else
+                    Debug.Log("Double");
                 break;
             case 3:
-                Debug.Log("Single"); 
+                numCorners = GetCornersOccupied(info.centerPos);
+                if (info.pieceType == PieceType.T && info.lastMoveRotate && numCorners >= 3)
+                    Debug.Log("T-Spin Triple!");
+                else
+                    Debug.Log("Triple");
                 break;
             case 4:
                 Debug.Log("Tetris!");
@@ -191,13 +209,29 @@ public class BlockGrid : MonoBehaviour
     }
 
     // helper method for detecting t-spins
-    private int getCornersOccupied()
+    private int GetCornersOccupied(Vector2Int centerPos)
     {
         int occupiedCorners = 0;
+        occupiedCorners += IsOccupied(centerPos.x+1, centerPos.y+1);
+        occupiedCorners += IsOccupied(centerPos.x-1, centerPos.y+1);
+        occupiedCorners += IsOccupied(centerPos.x+1, centerPos.y-1);
+        occupiedCorners += IsOccupied(centerPos.x-1, centerPos.y-1);
+        return occupiedCorners;
+    }
 
+    /// <summary>
+    /// Modified isAvailable method
+    /// </summary>
+    /// <returns>0 if available, 1 otherwise</returns>
+    private int IsOccupied(int x, int y)
+    {
+        // Check if coordinates are out of bounds 
+        if (x < 0 || x > 9 || y < 0)
+            return 1;
 
-
-        return 0;
+        // Return true if the space is empty or the block is active
+        bool isValid = _blocksInGrid[y][x] == null || _blocksInGrid[y][x].GetComponent<Block>().GetBlockStatus();
+        return isValid ? 0 : 1;
     }
 
     /// <summary>

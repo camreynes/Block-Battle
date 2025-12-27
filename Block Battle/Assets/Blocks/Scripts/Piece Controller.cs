@@ -69,7 +69,7 @@ public class PieceController : MonoBehaviour
             _currentPiece.SpawnBlocks(initialPositions);
 
             _currentPiece.SetBlocksInactive(gameObject);
-            PieceInfo _pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate);
+            PieceInfo _pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
             _currentPiece.FinishDestory(_pieceInfo);
             _currentPiece = null;
         }
@@ -356,7 +356,8 @@ public class PieceController : MonoBehaviour
         if (isFull)
         {
             yield return new WaitForSeconds(Global.effectDuration); // suspends the coroutine for duration of effect
-            _currentPiece.FinishDestory();
+            PieceInfo _pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
+            _currentPiece.FinishDestory(_pieceInfo);
         }
 
         _currentPiece = null;

@@ -18,11 +18,13 @@ public enum PieceType
 public class PieceInfo
 {
     public PieceType pieceType;
-    public bool _lastMoveRotate;
-    public PieceInfo(PieceType type, bool lastMoveRotate)
+    public bool lastMoveRotate;
+    public Vector2Int centerPos;
+    public PieceInfo(PieceType type, bool lastMoveRotate, Vector2Int centerPos)
     {
         pieceType = type;
-        _lastMoveRotate = lastMoveRotate;
+        this.lastMoveRotate = lastMoveRotate;
+        this.centerPos = centerPos;
     }
 }
 
