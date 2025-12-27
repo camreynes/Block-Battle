@@ -320,10 +320,15 @@ public class PieceScript : MonoBehaviour
         return false;
     }
 
-    public void FinishDestory(PieceInfo info)
+    /// <summary>
+    /// Clears any full rows
+    /// </summary>
+    /// <param name="info"></param>
+    public void FinishDestroy(PieceInfo info)
     {
-        if (_rowsFull.Count > 0)
+        if (_rowsFull.Count > 0) {
             _blockGrid.ClearRows(_rowsFull, info);
+        }
         Destroy(gameObject); // Destroy the parent piece game object after it has been placed
     }
 

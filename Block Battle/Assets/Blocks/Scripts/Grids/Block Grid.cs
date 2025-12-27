@@ -179,7 +179,7 @@ public class BlockGrid : MonoBehaviour
         int totalRowsCleared = 0;
         for (int i = 0; i < rowsToShift.Count; i++)
             totalRowsCleared += rowsToShift[i].Item3;
-        Debug.Log($"Total Rows Cleared: {totalRowsCleared}");
+        Debug.Log($"Total Rows Cleared: {totalRowsCleared} | Score Streak: {_scoreStreak}");
 
         switch (totalRowsCleared)
         {

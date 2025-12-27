@@ -26,6 +26,7 @@ public class Preview : MonoBehaviour
     private Sprite[] _sprites = new Sprite[7];
 
     private TMP_Text _worldText;
+    private Canvas _canvas;
 
     public void InitializeSelf()
     {
@@ -69,6 +70,7 @@ public class Preview : MonoBehaviour
         }
 
         // Create World Space Canvas
+
         GameObject canvasGO = new GameObject("Canvas");
         canvasGO.transform.SetParent(transform, false); // Attach to this object
         Canvas canvas = canvasGO.AddComponent<Canvas>();
@@ -113,5 +115,8 @@ public class Preview : MonoBehaviour
         s4.sprite = _sprites[list[3]];
     }
     
-
+    public void SetCanvas(Canvas canvas)
+    {
+        _canvas = canvas;
+    }
 }

@@ -70,7 +70,7 @@ public class PieceController : MonoBehaviour
 
             _currentPiece.SetBlocksInactive(gameObject);
             PieceInfo _pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
-            _currentPiece.FinishDestory(_pieceInfo);
+            _currentPiece.FinishDestroy(_pieceInfo);
             _currentPiece = null;
         }
         SpawnPiece();
@@ -352,15 +352,19 @@ public class PieceController : MonoBehaviour
             yield break; // No current piece to set inactive
 
 
-        bool isFull = _currentPiece.SetBlocksInactive(gameObject);
+        bool isFull = _currentPiece.SetBlocksInactive(gameObject); //isRowFull?
         if (isFull)
         {
             yield return new WaitForSeconds(Global.effectDuration); // suspends the coroutine for duration of effect
             PieceInfo _pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
-            _currentPiece.FinishDestory(_pieceInfo);
+            _grid.IncrementScore();
+            _currentPiece.FinishDestroy(_pieceInfo);
+        } else
+        {
+            _grid.ResetScoreStreak();
         }
 
-        _currentPiece = null;
+            _currentPiece = null;
         _recentlyHeld = false; // Reset hold ability
 
         yield break;

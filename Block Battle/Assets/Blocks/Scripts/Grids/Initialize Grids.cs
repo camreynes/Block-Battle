@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class InitializeGrids : MonoBehaviour
 {
@@ -66,39 +67,6 @@ public class InitializeGrids : MonoBehaviour
         pieceController.SetActive(true);
         dict.Add("pieceController", pieceController);
 
-        // Create a new piece preview window
-        GameObject preview = Instantiate(_previewPrefab);
-        preview.name = $"PiecePreview_{playerId}";
-        preview.transform.SetParent(player.transform, true);
-        float prevX = gridX + gridWidth * 1.05f;
-        float prevY = gridY + gridHeight;
-        preview.transform.localPosition = new Vector3(prevX, prevY, 0f);
-        preview.transform.localScale = new Vector3(_defaultGridScale.x*.65f, _defaultGridScale.y*.65f, 1f);
-        preview.GetComponent<SpriteRenderer>().sortingOrder = 2;
-        pieceController.GetComponent<PieceController>().SetPreview(preview.GetComponent<Preview>());
-        preview.GetComponent<Preview>().InitializeSelf();
-        dict.Add("preview", preview);
-
-        // Create a new piece preview background
-        GameObject previewBackground = Instantiate(_previewBackgroundPrefab);
-        previewBackground.name = $"PreviewBackground_{playerId}";
-        previewBackground.transform.SetParent(preview.transform, false);
-        previewBackground.transform.localPosition = Vector3.zero;
-        previewBackground.transform.localScale = Vector3.one;
-        previewBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
-        dict.Add("previewBackground", previewBackground);
-
-        // Create a new outline object
-        GameObject outlinePreview = Instantiate(_outlinePrefab);
-        outlinePreview.name = $"Outline_{playerId}";
-        outlinePreview.transform.SetParent(player.transform, true);
-        outlinePreview.transform.localPosition = Vector3.zero;
-        outlinePreview.transform.localScale = Vector3.one;
-        pieceController.GetComponent<PieceController>().SetOutline(outlinePreview.GetComponent<Outline>());
-        outlinePreview.GetComponent<Outline>().InitializeSelf();
-        outlinePreview.GetComponent<Outline>().SetGrid(grid.GetComponent<BlockGrid>());
-        dict.Add("outline", previewBackground);
-
         // Create a new hold window
         GameObject hold = Instantiate(_holdPrefab);
         hold.name = $"Hold_{playerId}";
@@ -120,6 +88,62 @@ public class InitializeGrids : MonoBehaviour
         holdBackground.transform.localScale = Vector3.one;
         holdBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
         dict.Add("holdBackground", holdBackground);
+
+        // Create a new outline object
+        GameObject outlinePreview = Instantiate(_outlinePrefab);
+        outlinePreview.name = $"Outline_{playerId}";
+        outlinePreview.transform.SetParent(player.transform, true);
+        outlinePreview.transform.localPosition = Vector3.zero;
+        outlinePreview.transform.localScale = Vector3.one;
+        pieceController.GetComponent<PieceController>().SetOutline(outlinePreview.GetComponent<Outline>());
+        outlinePreview.GetComponent<Outline>().InitializeSelf();
+        outlinePreview.GetComponent<Outline>().SetGrid(grid.GetComponent<BlockGrid>());
+        dict.Add("outlinePreview", outlinePreview);
+
+        // Create a canvas for the player
+        GameObject canvasGO = new GameObject($"Canvas_{playerId}");
+        canvasGO.transform.SetParent(player.transform, false); // Attach to this object
+        Canvas canvas = canvasGO.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
+        scaler.dynamicPixelsPerUnit = 10; // Optional: controls how sharp text appears
+        canvasGO.AddComponent<GraphicRaycaster>();
+        dict.Add("canvas", canvasGO);
+
+        // Create a new piece preview window
+        GameObject preview = Instantiate(_previewPrefab);
+        preview.name = $"PiecePreview_{playerId}";
+        preview.transform.SetParent(player.transform, true);
+        float prevX = gridX + gridWidth * 1.05f;
+        float prevY = gridY + gridHeight;
+        preview.transform.localPosition = new Vector3(prevX, prevY, 0f);
+        preview.transform.localScale = new Vector3(_defaultGridScale.x*.65f, _defaultGridScale.y*.65f, 1f);
+        preview.GetComponent<SpriteRenderer>().sortingOrder = 2;
+        pieceController.GetComponent<PieceController>().SetPreview(preview.GetComponent<Preview>());
+        preview.GetComponent<Preview>().InitializeSelf();
+        preview.GetComponent<Preview>().SetCanvas(canvas);
+        dict.Add("preview", preview);
+
+        // Create a new piece preview background
+        GameObject previewBackground = Instantiate(_previewBackgroundPrefab);
+        previewBackground.name = $"PreviewBackground_{playerId}";
+        previewBackground.transform.SetParent(preview.transform, false);
+        previewBackground.transform.localPosition = Vector3.zero;
+        previewBackground.transform.localScale = Vector3.one;
+        previewBackground.GetComponent<SpriteRenderer>().sortingOrder = 1;
+        dict.Add("previewBackground", previewBackground);
+
+        // Create a new score tracker
+        GameObject scoreTracker = new GameObject($"ScoreTracker_{playerId}");
+        scoreTracker.transform.SetParent(player.transform, true);
+        float scoreX = gridX - gridWidth * 0.05f;
+        float scoreY = gridY;
+        scoreTracker.transform.localPosition = new Vector3(scoreX, scoreY, 0f);
+        scoreTracker.transform.localScale = new Vector3(_defaultGridScale.x * .65f, _defaultGridScale.y * .65f, 1f);
+        //scoreTracker.GetComponent<SpriteRenderer>().sortingOrder = 2;
+        scoreTracker.AddComponent<ScoreTracker>();
+        scoreTracker.GetComponent<ScoreTracker>().InitializeSelf();
+        dict.Add("scoreTracker", scoreTracker);
 
         return dict;
     }
