@@ -1,4 +1,6 @@
 using System.Runtime.CompilerServices;
+using TMPEffects;
+using TMPEffects.Components;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,6 +9,7 @@ public class Preview : MonoBehaviour
 {
     private float _width;
     private float _height;
+    private float centX;
     private Vector2 _next1;
     private Vector2 _next2;
     private Vector2 _next3;
@@ -16,6 +19,7 @@ public class Preview : MonoBehaviour
     private GameObject _piece2;
     private GameObject _piece3;
     private GameObject _piece4;
+    private GameObject _textPrefab;
 
     private SpriteRenderer s1;
     private SpriteRenderer s2;
@@ -25,18 +29,17 @@ public class Preview : MonoBehaviour
     [SerializeField] private GameObject[] _pieces;
     private Sprite[] _sprites = new Sprite[7];
 
-    private TMP_Text _worldText;
-    private Canvas _canvas;
-
-    public void InitializeSelf()
+    public void InitializeSelf(GameObject textPrefab)
     {
+        _textPrefab = textPrefab;
+
         // SpriteRenderer bounds setup
         SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
         Vector2 size = spriteRenderer.size;
         _width = size.x;
         _height = size.y;
 
-        float centX = _width / 2f;
+        centX = _width / 2f;
         float segY = _height / 30f;
         float next1Y = segY * -5f;
         float next2Y = segY * -13f;
@@ -69,42 +72,16 @@ public class Preview : MonoBehaviour
             _sprites[i] = _pieces[i].GetComponent<SpriteRenderer>().sprite;
         }
 
-        // Create World Space Canvas
+        // WORLD SPACE TEXT (no canvas) - uses prefab else TMPAnimator doesn't work on init
+        GameObject _textObject = Instantiate(_textPrefab);
+        _textObject.transform.SetParent(transform, false);
+        _textObject.transform.localPosition = new Vector3(centX, 0.16f, -1f);
+        _textObject.transform.localScale = Vector3.one * 0.08f;
 
-        GameObject canvasGO = new GameObject("Canvas");
-        canvasGO.transform.SetParent(transform, false); // Attach to this object
-        Canvas canvas = canvasGO.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.WorldSpace;
-
-        CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
-        scaler.dynamicPixelsPerUnit = 10; // Optional: controls how sharp text appears
-
-        canvasGO.AddComponent<GraphicRaycaster>();
-
-        // Configure canvas RectTransform
-        RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(2f, 1f); // World units
-        canvasRect.localPosition = Vector3.zero;   // Centered on this object
-        canvasRect.localScale = Vector3.one * 0.01f; // Scale down if needed
-
-        // TEXT
-        GameObject txt = new GameObject("PreviewText");
-        txt.transform.SetParent(transform, false);
-        txt.transform.localPosition = new Vector3(centX, .12f, 3);
-
-        // Add TextMeshPro component
-        _worldText = txt.AddComponent<TextMeshPro>();
-
-        // Configure text settings
-        _worldText.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/hun2 SDF");
-        _worldText.text = "Preview";
-        _worldText.fontSize = 16;  // use generated font size
-        _worldText.transform.localScale = Vector3.one * 0.1f; // scale down to fit
+        TextMeshPro _worldText = _textObject.GetComponent<TextMeshPro>();
+        _worldText.text = "<sketchy freq=2 amp=0.05 delay=.75>PREVIEW</sketchy>";
+        _worldText.fontSize = 25;
         _worldText.color = Color.black;
-        _worldText.alignment = TextAlignmentOptions.Center;
-        _worldText.enableKerning = true; // need to address P and I spacing eventually
-        _worldText.characterSpacing = -4f;
-        _worldText.fontStyle = TMPro.FontStyles.Bold;
     }
 
     public void UpdatePreview(int[] list)
@@ -113,10 +90,5 @@ public class Preview : MonoBehaviour
         s2.sprite = _sprites[list[1]];
         s3.sprite = _sprites[list[2]];
         s4.sprite = _sprites[list[3]];
-    }
-    
-    public void SetCanvas(Canvas canvas)
-    {
-        _canvas = canvas;
     }
 }

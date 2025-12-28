@@ -13,10 +13,8 @@ public class InitializeGrids : MonoBehaviour
     [SerializeField] private GameObject _outlinePrefab;
     [SerializeField] private GameObject _holdPrefab;
     [SerializeField] private GameObject _holdBackgroundPrefab;
-
-
-
     [SerializeField] private GameObject _pieceController;
+    [SerializeField] private GameObject _textPrefab;
 
     private Vector3 _defaultGridPos = new Vector3(-2.247f, -4.49f); // Default position for the grid
     private Vector3 _defaultGridScale = new Vector3(2.809f, 2.809f); // Default scale for the grid
@@ -72,12 +70,12 @@ public class InitializeGrids : MonoBehaviour
         hold.name = $"Hold_{playerId}";
         hold.transform.SetParent(player.transform, true);
         float holdX = gridX - gridWidth * 0.05f;
-        float holdY = gridY + gridHeight;
+        float holdY = gridY + gridHeight * 0.95f;
         hold.transform.localPosition = new Vector3(holdX, holdY, 0f);
         hold.transform.localScale = new Vector3(_defaultGridScale.x * .65f, _defaultGridScale.y * .65f, 1f);
         hold.GetComponent<SpriteRenderer>().sortingOrder = 2;
         pieceController.GetComponent<PieceController>().SetHold(hold.GetComponent<Hold>());
-        hold.GetComponent<Hold>().InitializeSelf();
+        hold.GetComponent<Hold>().InitializeSelf(_textPrefab);
         dict.Add("hold", hold);
 
         // Create a new hold background
@@ -100,28 +98,17 @@ public class InitializeGrids : MonoBehaviour
         outlinePreview.GetComponent<Outline>().SetGrid(grid.GetComponent<BlockGrid>());
         dict.Add("outlinePreview", outlinePreview);
 
-        // Create a canvas for the player
-        GameObject canvasGO = new GameObject($"Canvas_{playerId}");
-        canvasGO.transform.SetParent(player.transform, false); // Attach to this object
-        Canvas canvas = canvasGO.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.WorldSpace;
-        CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
-        scaler.dynamicPixelsPerUnit = 10; // Optional: controls how sharp text appears
-        canvasGO.AddComponent<GraphicRaycaster>();
-        dict.Add("canvas", canvasGO);
-
         // Create a new piece preview window
         GameObject preview = Instantiate(_previewPrefab);
         preview.name = $"PiecePreview_{playerId}";
         preview.transform.SetParent(player.transform, true);
         float prevX = gridX + gridWidth * 1.05f;
-        float prevY = gridY + gridHeight;
+        float prevY = gridY + gridHeight * 0.95f;
         preview.transform.localPosition = new Vector3(prevX, prevY, 0f);
         preview.transform.localScale = new Vector3(_defaultGridScale.x*.65f, _defaultGridScale.y*.65f, 1f);
         preview.GetComponent<SpriteRenderer>().sortingOrder = 2;
         pieceController.GetComponent<PieceController>().SetPreview(preview.GetComponent<Preview>());
-        preview.GetComponent<Preview>().InitializeSelf();
-        preview.GetComponent<Preview>().SetCanvas(canvas);
+        preview.GetComponent<Preview>().InitializeSelf(_textPrefab);
         dict.Add("preview", preview);
 
         // Create a new piece preview background

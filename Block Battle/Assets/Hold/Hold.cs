@@ -17,14 +17,16 @@ public class Hold : MonoBehaviour
     SpriteRenderer spr;
     private Sprite[] _sprites;
 
-    private TMP_Text _worldText;
+    private GameObject _textPrefab;
 
     /// <summary>
     /// Initializes the Hold component by finding center for future use.
     /// Sets up sprites, similar to Preview.cs
     /// </summary>
-    public void InitializeSelf()
+    public void InitializeSelf(GameObject textPrefab)
     {
+        _textPrefab = textPrefab;
+
         // SpriteRenderer bounds setup
         SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
         Vector2 size = spriteRenderer.size;
@@ -47,23 +49,17 @@ public class Hold : MonoBehaviour
             _sprites[i] = _pieces[i].GetComponent<SpriteRenderer>().sprite;
         }
 
-        GameObject txt = new GameObject("HoldText");
-        txt.transform.SetParent(transform, false);
-        txt.transform.localPosition = new Vector3(-centX, .12f, 3);
+        // WORLD SPACE TEXT (no canvas) - uses prefab else TMPAnimator doesn't work on init
+        GameObject _textObject = Instantiate(_textPrefab);
+        _textObject.transform.SetParent(transform, false);
+        _textObject.transform.localPosition = new Vector3(-centX, 0.18f, -1);
+        _textObject.transform.localScale = Vector3.one * 0.08f;
 
-        // Add TextMeshPro component
-        _worldText = txt.AddComponent<TextMeshPro>();
-
-        // Configure text settings
-        _worldText.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/hun2 SDF");
-        _worldText.text = "Hold Piece";
-        _worldText.fontSize = 16;  // use generated font size
-        _worldText.transform.localScale = Vector3.one * 0.1f; // scale down to fit
+        TextMeshPro _worldText = _textObject.GetComponent<TextMeshPro>();
+        _worldText.text = "<sketchy freq=2 amp=0.05 delay=.75>HOLD</sketchy>";
+        _worldText.fontSize = 25;
         _worldText.color = Color.black;
-        _worldText.alignment = TextAlignmentOptions.Center;
-        _worldText.enableKerning = true; // need to address P and I spacing eventually
-        _worldText.characterSpacing = -4f;
-        _worldText.fontStyle = TMPro.FontStyles.Bold;
+
     }
 
     /// <summary>
