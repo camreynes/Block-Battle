@@ -122,14 +122,14 @@ public class InitializeGrids : MonoBehaviour
 
         // Create a new score tracker
         GameObject scoreTracker = new GameObject($"ScoreTracker_{playerId}");
-        scoreTracker.transform.SetParent(player.transform, true);
-        float scoreX = gridX - gridWidth * 0.05f;
+        scoreTracker.AddComponent<SpriteRenderer>();
+        scoreTracker.transform.SetParent(player.transform, false);
+        float scoreX = gridX - gridWidth * 0.75f;
         float scoreY = gridY;
         scoreTracker.transform.localPosition = new Vector3(scoreX, scoreY, 0f);
-        scoreTracker.transform.localScale = new Vector3(_defaultGridScale.x * .65f, _defaultGridScale.y * .65f, 1f);
-        //scoreTracker.GetComponent<SpriteRenderer>().sortingOrder = 2;
+        //scoreTracker.transform.localScale = new Vector3(_defaultGridScale.x * .65f, _defaultGridScale.y * .65f, 1f);
         scoreTracker.AddComponent<ScoreTracker>();
-        scoreTracker.GetComponent<ScoreTracker>().InitializeSelf();
+        scoreTracker.GetComponent<ScoreTracker>().InitializeSelf(_textPrefab);
         dict.Add("scoreTracker", scoreTracker);
 
         return dict;

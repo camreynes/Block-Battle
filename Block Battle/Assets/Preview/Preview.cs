@@ -1,9 +1,5 @@
-using System.Runtime.CompilerServices;
-using TMPEffects;
-using TMPEffects.Components;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class Preview : MonoBehaviour
 {

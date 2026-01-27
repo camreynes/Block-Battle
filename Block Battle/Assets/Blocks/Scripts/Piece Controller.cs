@@ -267,6 +267,7 @@ public class PieceController : MonoBehaviour
 
         //PrintVector2Array(_initialPositions);
         _currentPiece.SpawnBlocks(initialPositions);
+        _recentlyHeld = false; // Reset hold ability (otherwise can sometimes get stuck)
         _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType()); //extra call to update outline on spawn
     }
 
