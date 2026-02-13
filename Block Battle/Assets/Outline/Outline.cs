@@ -5,6 +5,7 @@ public class Outline : MonoBehaviour
     [SerializeField] private GameObject _outlinePrefab;
     [SerializeField] private Sprite[] _outlineSpritePrefabs;
 
+    private Vector2 _position;
     private GameObject[] _outlines = new GameObject[4];
     private SpriteRenderer[] _outlineSprites = new SpriteRenderer[4];
     private BlockGrid _grid;

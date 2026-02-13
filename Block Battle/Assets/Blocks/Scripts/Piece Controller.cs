@@ -229,6 +229,8 @@ public class PieceController : MonoBehaviour
 
     private void SpawnPiece()
     {
+        _timeToFall -= 0.0015f;
+        print($"Time to fall: {_timeToFall}");
         _forceHardDrop = false;
         GameObject pieceObj = null;
 
