@@ -125,11 +125,14 @@ public class InitializeGrids : MonoBehaviour
         scoreTracker.AddComponent<SpriteRenderer>();
         scoreTracker.transform.SetParent(player.transform, false);
         float scoreX = gridX - gridWidth * 0.75f;
-        float scoreY = gridY;
+        float scoreY = gridY + gridHeight * 0.25f; // vertically centre-ish in the left column
         scoreTracker.transform.localPosition = new Vector3(scoreX, scoreY, 0f);
-        //scoreTracker.transform.localScale = new Vector3(_defaultGridScale.x * .65f, _defaultGridScale.y * .65f, 1f);
+        scoreTracker.transform.localScale = new Vector3(_defaultGridScale.x * .65f, _defaultGridScale.y * .65f, 1f);
+
         scoreTracker.AddComponent<ScoreTracker>();
-        scoreTracker.GetComponent<ScoreTracker>().InitializeSelf(_textPrefab);
+        ScoreTracker st = scoreTracker.GetComponent<ScoreTracker>();
+        st.InitializeSelf(_textPrefab);
+        blockGrid.SetScoreTracker(st);   // give BlockGrid a live reference so it can push score updates
         dict.Add("scoreTracker", scoreTracker);
 
         return dict;

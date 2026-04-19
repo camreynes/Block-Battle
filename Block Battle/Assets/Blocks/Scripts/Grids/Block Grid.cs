@@ -20,6 +20,11 @@ public class BlockGrid : MonoBehaviour
     private int _spaceUsed = 0; // Tracks the top most block being used
     private int[] _blockCount = new int[20]; // Tracks the number of blocks in each row
     private int _scoreStreak = 0;
+    private int _totalScore = 0;
+    private int _linesCleared = 0;
+    private int _level = 1;
+    private bool _backToBack = false;      // true when last eligible clear was Tetris or T-Spin
+    private ScoreTracker _scoreTracker;
 
     private Vector2 _position; //represents bottom left position of the grid
     public Vector2 scale = new Vector2(0, 0);
@@ -165,47 +170,137 @@ public class BlockGrid : MonoBehaviour
         }
     }
 
+    public void SetScoreTracker(ScoreTracker scoreTracker)
+    {
+        _scoreTracker = scoreTracker;
+    }
+
     public void ResetScoreStreak()
     {
         _scoreStreak = 0;
+        _scoreTracker?.ClearComboDisplay(_level, _linesCleared);
     }
+
     public void IncrementScore()
     {
         _scoreStreak++;
     }
 
+    public int GetTotalScore()   => _totalScore;
+    public int GetLevel()        => _level;
+    public int GetLinesCleared() => _linesCleared;
+
+    /// <summary>
+    /// Adds soft-drop (1 pt/row) or hard-drop (2 pt/row) bonus to the total score.
+    /// Called directly from PieceController so the display stays in sync.
+    /// </summary>
+    public void AddDropPoints(int points)
+    {
+        if (points <= 0) return;
+        _totalScore += points;
+        _scoreTracker?.UpdateScore(_totalScore, "", _scoreStreak, _level, _linesCleared);
+    }
+
+    // Official Tetris Guideline scoring (× Level)
+    // Single 100 | Double 300 | Triple 500 | Tetris 800
+    // T-Spin Single 800 | T-Spin Double 1200 | T-Spin Triple 1600
+    // B2B bonus: ×1.5 on the base before level multiplier
+    // Combo: 50 × (streak - 1) × level (0 on first consecutive clear)
+    // Soft drop: 1 pt/row  |  Hard drop: 2 pts/row  (no level multiplier – handled in PieceController)
     private void CalculcateScore(List<Tuple<int, int, int>> rowsToShift, PieceInfo info)
     {
         int totalRowsCleared = 0;
         for (int i = 0; i < rowsToShift.Count; i++)
             totalRowsCleared += rowsToShift[i].Item3;
-        Debug.Log($"Total Rows Cleared: {totalRowsCleared} | Score Streak: {_scoreStreak}");
+
+        if (totalRowsCleared == 0)
+            return;
+
+        // --- Determine clear type and base points ---
+        // T-Spin condition: T piece, last move was a rotation, 3+ corners occupied
+        bool tspinCheck = info.pieceType == PieceType.T
+                          && info.lastMoveRotate
+                          && GetCornersOccupied(info.centerPos) >= 3;
+
+        int basePoints = 0;
+        string clearType = "";
+        bool b2bEligible = false; // Tetris or T-Spin clears qualify for back-to-back
 
         switch (totalRowsCleared)
         {
             case 1:
-                Debug.Log("Single");
+                if (tspinCheck)
+                {
+                    clearType = "T-SPIN SINGLE";
+                    basePoints = 800;
+                    b2bEligible = true;
+                }
+                else
+                {
+                    clearType = "SINGLE";
+                    basePoints = 100;
+                }
                 break;
+
             case 2:
-                int numCorners = GetCornersOccupied(info.centerPos);
-                if (info.pieceType == PieceType.T && info.lastMoveRotate && numCorners == 3)
-                    Debug.Log("T-Spin Double!");
+                if (tspinCheck)
+                {
+                    clearType = "T-SPIN DOUBLE";
+                    basePoints = 1200;
+                    b2bEligible = true;
+                }
                 else
-                    Debug.Log("Double");
+                {
+                    clearType = "DOUBLE";
+                    basePoints = 300;
+                }
                 break;
+
             case 3:
-                numCorners = GetCornersOccupied(info.centerPos);
-                if (info.pieceType == PieceType.T && info.lastMoveRotate && numCorners >= 3)
-                    Debug.Log("T-Spin Triple!");
+                if (tspinCheck)
+                {
+                    clearType = "T-SPIN TRIPLE";
+                    basePoints = 1600;
+                    b2bEligible = true;
+                }
                 else
-                    Debug.Log("Triple");
+                {
+                    clearType = "TRIPLE";
+                    basePoints = 500;
+                }
                 break;
+
             case 4:
-                Debug.Log("Tetris!");
+                clearType = "TETRIS";
+                basePoints = 800;
+                b2bEligible = true;
                 break;
+
             default:
                 break;
         }
+
+        // --- Back-to-back bonus: ×1.5 on base for consecutive Tetris / T-Spin ---
+        if (b2bEligible && _backToBack)
+        {
+            basePoints = Mathf.RoundToInt(basePoints * 1.5f);
+            clearType = "B2B " + clearType;
+        }
+        _backToBack = b2bEligible; // update chain for next piece
+
+        // --- Official level multiplier on base points ---
+        int linesClearPoints = basePoints * _level;
+
+        // --- Combo bonus: 50 × (streak - 1) × level (0 on the very first consecutive clear) ---
+        int comboBonus = (_scoreStreak > 1) ? 50 * (_scoreStreak - 1) * _level : 0;
+
+        int earned = linesClearPoints + comboBonus;
+        _totalScore += earned;
+
+        Debug.Log($"[Lvl {_level}] {clearType} | +{earned} (base:{linesClearPoints} combo:{comboBonus}) | Total:{_totalScore} | Streak:{_scoreStreak}");
+
+        _scoreTracker?.UpdateScore(_totalScore, clearType, _scoreStreak, _level, _linesCleared);
+        SFXManager.Instance?.PlayClearType(clearType);
     }
 
     // helper method for detecting t-spins
@@ -240,6 +335,10 @@ public class BlockGrid : MonoBehaviour
     /// <param name="fullRows"></param>
     public void ClearRows(List<int> fullRows, PieceInfo info)
     {
+        // --- Track lines and derive level (1 level per 10 lines, capped at 20) ---
+        _linesCleared += fullRows.Count;
+        _level = Mathf.Min(_linesCleared / 10 + 1, 20);
+
         // ---------- Clear Rows, Destroy Game Objects ----------
         for (int i = 0; i < fullRows.Count; i++)
         {

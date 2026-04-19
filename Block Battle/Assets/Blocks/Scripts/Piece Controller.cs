@@ -4,61 +4,72 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Class that handles piece spawning, roations, movements, etc.
+// Class that handles piece spawning, rotations, movements, etc.
 public class PieceController : MonoBehaviour
 {
 
     [SerializeField] private GameObject[] _tetrominoPrefab;
     [SerializeField] protected BlockGrid _grid;
 
-    private List<Tuple<int, GameObject>> _pieceOrder = new List<Tuple<int, GameObject>>();
+    private List<Tuple<int, GameObject>> _pieceOrder    = new List<Tuple<int, GameObject>>();
     private List<Tuple<int, GameObject>> _tempPieceList = new List<Tuple<int, GameObject>>();
 
     private Vector2Int[] _lastPositions;
 
-    private float _timeToFall = .8f;
-    private float _lockDelay = .5f;
-    private float _maxLockDelay = 1.5f;
+    // Fall speed derived from level using the official Guideline formula each spawn.
+    // Level 1 → 1.0 s/row  |  Level 10 → ~0.083 s/row  |  Level 20 → ~0.001 s/row
+    private float _timeToFall   = 1.0f;
+
+    // Lock-phase timers — recomputed each spawn via GetLock*ForLevel().
+    // All three shrink with level so high-level play feels appropriately aggressive.
+    private float _lockDelay    = 0.5f;   // per-step budget before the piece locks
+    private float _maxLockDelay = 1.5f;   // absolute ceiling for the whole lock phase
+    private int   _maxMoveResets = 15;    // how many move/rotate resets the player gets
 
     private PieceScript _currentPiece;
-    private int _playerID = -1; // Player ID for input mapping, will make dynamic later
-    private int _spawnHeld = -1; // To determine if we are spawning a held piece, if so what piece type
+    private int _playerID  = -1;  // Player ID for input mapping
+    private int _spawnHeld = -1;  // ≥0 means spawn this held piece type next
 
     private HoldState _holdLeft;
     private HoldState _holdRight;
     private HoldState _holdDown;
 
-    private bool _recentlyMovedByPlayer = false;
+    private bool _recentlyMovedByPlayer   = false;
     private bool _recentlyRotatedByPlayer = false;
-    private bool _lastMoveRotate = false; // false = move, true = rotate (mostly for score detection)
-    private bool _forceHardDrop = false;
-    private bool _recentlyHeld = false; // To prevent multiple holds in one turn
-    [SerializeField] private bool _setPiece = false; // Used to determine if we are using only one hardset piece
+    private bool _lastMoveRotate          = false; // false = move, true = rotate (for t-spin detection)
+    private bool _forceHardDrop           = false;
+    private bool _recentlyHeld            = false; // prevents double-hold per piece
+    private bool _gameOver                = false; // latched on top-out
+
+    [SerializeField] private bool _setPiece    = false; // debug: always spawn piece 4
     [SerializeField] private bool _stagePreset = false;
+
+    // Soft-drop row counter — reset on every new piece, flushed to score on lock
+    private int _softDropRows = 0;
 
     private Preview _preview;
     private Outline _outline;
-    private Hold _hold;
+    private Hold    _hold;
 
-    private static readonly Vector2Int LEFT = new Vector2Int(-1, 0);
+    private static readonly Vector2Int LEFT  = new Vector2Int(-1, 0);
     private static readonly Vector2Int RIGHT = new Vector2Int(1, 0);
-    private static readonly Vector2Int DOWN = new Vector2Int(0, -1);
+    private static readonly Vector2Int DOWN  = new Vector2Int(0, -1);
 
     private Coroutine _fallRoutine;
 
-    // On Awake(), we define player inputs
+    // ── Lifecycle ────────────────────────────────────────────────────────────────
+
     private void Awake()
     {
-        // Hold States
-        _holdLeft = new HoldState(0.167f, 0.033f);
+        _holdLeft  = new HoldState(0.167f, 0.033f);
         _holdRight = new HoldState(0.167f, 0.033f);
-        _holdDown = new HoldState(0.05f, 0.02f);
+        _holdDown  = new HoldState(0.05f,  0.02f);
     }
 
     private void Start()
     {
         if (_stagePreset)
-        {  // Special conditions if we are using a preset stage
+        {
             Global.GetPreset();
             GameObject pieceObj = Instantiate(_tetrominoPrefab[1]);
             _currentPiece = pieceObj.GetComponent<PieceScript>();
@@ -69,154 +80,228 @@ public class PieceController : MonoBehaviour
             _currentPiece.SpawnBlocks(initialPositions);
 
             _currentPiece.SetBlocksInactive(gameObject);
-            PieceInfo _pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
-            _currentPiece.FinishDestroy(_pieceInfo);
+            PieceInfo pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
+            _currentPiece.FinishDestroy(pieceInfo);
             _currentPiece = null;
         }
         SpawnPiece();
         _fallRoutine = StartCoroutine(BlockFall());
     }
 
-    // We use update to check for held keys
+    // ── Input / Update ───────────────────────────────────────────────────────────
+
     private void Update()
     {
-        if (_currentPiece == null)
-            return;
+        if (_gameOver) return;
 
-        var currentPositions = _currentPiece.GetPositions();
-        if ((_recentlyMovedByPlayer || _recentlyRotatedByPlayer) && _lastPositions != null && !_lastPositions.SequenceEqual(currentPositions))
-        {
-            // piece actually changed grid cells (move or rotate)
-            _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType());
-        }
-        _lastPositions = currentPositions; // keep the latest snapshot
-
-
-        //if (_recentlyMoved)
-        //    Debug.Log("Moved");
-        // HOLDING ACCELERATED MOVEMENT
-        _recentlyMovedByPlayer = false;
-        _recentlyRotatedByPlayer = false;  
-        bool leftHeld = _holdLeft.IsHolding;
-        bool rightHeld = _holdRight.IsHolding;
-        bool downHeld = _holdDown.IsHolding;
-
-        if (leftHeld && !rightHeld && _holdLeft.ShouldRepeat())
-            _recentlyMovedByPlayer = _currentPiece.TryMovePiece(LEFT);
-        else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
-            _recentlyMovedByPlayer = _currentPiece.TryMovePiece(RIGHT);
-        if (downHeld && _holdDown.ShouldRepeat())
-            _recentlyMovedByPlayer = _currentPiece.TryMovePiece(DOWN);
-
-        // PLAYER INPUTS - MOVEMENT
-        var actLeft = TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT, _playerID);
+        // ── Key-release events must be processed even when no piece is active ──
+        // BUG FIX: previously the early-return on _currentPiece == null would swallow
+        // WasReleasedThisFrame() calls, leaving HoldState stuck in IsHolding=true.
+        // The new piece would then immediately move in the held direction on spawn.
+        var actLeft  = TetrixInputManager.GetInputAction(GameInputAction.MOVE_LEFT,  _playerID);
         var actRight = TetrixInputManager.GetInputAction(GameInputAction.MOVE_RIGHT, _playerID);
-        var actDown = TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP, _playerID);
+        var actDown  = TetrixInputManager.GetInputAction(GameInputAction.SOFT_DROP,  _playerID);
 
-        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT, _playerID))
-            OnMoveStart(LEFT);
-        if (actLeft != null && actLeft.WasReleasedThisFrame())
-            OnMoveEnd(LEFT);
+        if (actLeft  != null && actLeft.WasReleasedThisFrame())  OnMoveEnd(LEFT);
+        if (actRight != null && actRight.WasReleasedThisFrame()) OnMoveEnd(RIGHT);
+        if (actDown  != null && actDown.WasReleasedThisFrame())  OnMoveEnd(DOWN);
+        // ─────────────────────────────────────────────────────────────────────────
 
-        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerID))
-            OnMoveStart(RIGHT);
-        if (actRight != null && actRight.WasReleasedThisFrame())
-            OnMoveEnd(RIGHT);
+        // ── Capture new presses during spawn gap ─────────────────────────────────
+        // WasPressed fires for exactly one frame. If that frame falls inside the
+        // spawn gap (_currentPiece == null), the regular WasPressed block below
+        // is never reached and the input is dropped. Priming IsHolding here means
+        // DAS/ARR picks it up the moment the new piece arrives.
+        if (_currentPiece == null)
+        {
+            if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT,  _playerID)) _holdLeft.StartHold();
+            if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerID)) _holdRight.StartHold();
+            if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP,  _playerID)) _holdDown.StartHold();
+            return;
+        }
 
-        if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP, _playerID))
-            OnMoveStart(DOWN);
-        if (actDown != null && actDown.WasReleasedThisFrame())
-            OnMoveEnd(DOWN);
+        // ── Outline update (optimized: only allocate when player actually moved) ──
+        // GetPositions() + comparison are skipped on idle frames to avoid GC pressure.
+        if (_recentlyMovedByPlayer || _recentlyRotatedByPlayer)
+        {
+            var currentPositions = _currentPiece.GetPositions();
+            if (_lastPositions == null || !PositionsEqual(_lastPositions, currentPositions))
+                _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType());
+            _lastPositions = currentPositions;
+        }
 
-        if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerID))
-            HardDrop();
+        // ── Reset per-frame movement flags ───────────────────────────────────────
+        _recentlyMovedByPlayer   = false;
+        _recentlyRotatedByPlayer = false;
 
-        // PLAYER INPUTS - ROTATIONS
+        bool leftHeld  = _holdLeft.IsHolding;
+        bool rightHeld = _holdRight.IsHolding;
+        bool downHeld  = _holdDown.IsHolding;
+
+        // ── DAS / ARR movement ───────────────────────────────────────────────────
+        if (leftHeld && !rightHeld && _holdLeft.ShouldRepeat())
+        {
+            bool moved = _currentPiece.TryMovePiece(LEFT);
+            _recentlyMovedByPlayer = moved;
+            if (moved) SFXManager.Instance?.PlayMove();
+        }
+        else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
+        {
+            bool moved = _currentPiece.TryMovePiece(RIGHT);
+            _recentlyMovedByPlayer = moved;
+            if (moved) SFXManager.Instance?.PlayMove();
+        }
+        if (downHeld && _holdDown.ShouldRepeat())
+        {
+            bool moved = _currentPiece.TryMovePiece(DOWN);
+            _recentlyMovedByPlayer = moved;
+            if (moved) _softDropRows++;
+        }
+
+        // ── New key presses ───────────────────────────────────────────────────────
+        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_LEFT,  _playerID)) OnMoveStart(LEFT);
+        if (TetrixInputManager.WasPressed(GameInputAction.MOVE_RIGHT, _playerID)) OnMoveStart(RIGHT);
+        if (TetrixInputManager.WasPressed(GameInputAction.SOFT_DROP,  _playerID)) OnMoveStart(DOWN);
+
+        if (TetrixInputManager.WasPressed(GameInputAction.HARD_DROP, _playerID)) HardDrop();
+
+        // ── Rotations ─────────────────────────────────────────────────────────────
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, _playerID))
+        {
             _recentlyRotatedByPlayer = _currentPiece.TryRotateCW();
+            if (_recentlyRotatedByPlayer) SFXManager.Instance?.PlayRotate();
+        }
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerID))
+        {
             _recentlyRotatedByPlayer = _currentPiece.TryRotateCCW();
+            if (_recentlyRotatedByPlayer) SFXManager.Instance?.PlayRotate();
+        }
 
-        // PLAYER INPUTS - HOLD
+        // ── Hold ──────────────────────────────────────────────────────────────────
         if (TetrixInputManager.WasPressed(GameInputAction.HOLD, _playerID))
-        {
             HoldPiece();
-        }
 
-        // PLAYER INPUTS - TESTING
+        // ── Debug ─────────────────────────────────────────────────────────────────
         if (TetrixInputManager.WasPressed(GameInputAction.SAVE_SCENE, _playerID))
-        {
             SaveScene();
-        }
 
-        if (_recentlyMovedByPlayer)
-            _lastMoveRotate = false;
-        if (_recentlyRotatedByPlayer)
-            _lastMoveRotate = true;
+        if (_recentlyMovedByPlayer)   _lastMoveRotate = false;
+        if (_recentlyRotatedByPlayer) _lastMoveRotate = true;
     }
 
-    // -----------------------PRIVATE HELPERS-----------------------
+    // ── Helpers ──────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Official Tetris Guideline fall-speed formula.
+    /// Level 1 → 1.0 s/row.  Level 10 → ~0.083 s/row.  Level 20 → ~0.001 s/row.
+    /// </summary>
+    private float GetFallSpeedForLevel(int level)
+    {
+        float b = 0.8f - (level - 1) * 0.007f;
+        return Mathf.Max(Mathf.Pow(b, level - 1), 0.001f); // floor at 1 ms so it never hits 0
+    }
 
+    /// <summary>
+    /// Per-step lock budget. 500 ms at level 1, linear ramp to 100 ms at level 21+.
+    /// Mirrors the aggressive feel of competitive games (TETR.IO / Jstris).
+    /// </summary>
+    private float GetLockDelayForLevel(int level)
+    {
+        return Mathf.Max(0.10f, 0.50f - (level - 1) * 0.02f);
+        // Level 1 → 500 ms | Level 10 → 320 ms | Level 15 → 220 ms | Level 21+ → 100 ms
+    }
 
-    // -----------------------PIECE ORDER-----------------------
+    /// <summary>
+    /// How many move/rotate resets the player gets before the step timer becomes
+    /// irresistible. Standard SRS allows 15; scales down at higher levels so
+    /// infinite floor-sliding is impossible in fast play.
+    /// </summary>
+    private int GetMaxResetsForLevel(int level)
+    {
+        return Mathf.Max(5, 15 - Mathf.Max(0, level - 5));
+        // Levels 1–5 → 15 | Level 10 → 10 | Level 15+ → 5
+    }
 
+    /// <summary>
+    /// Zero-allocation position comparison (replaces LINQ SequenceEqual).
+    /// </summary>
+    private static bool PositionsEqual(Vector2Int[] a, Vector2Int[] b)
+    {
+        if (a.Length != b.Length) return false;
+        for (int i = 0; i < a.Length; i++)
+            if (a[i] != b[i]) return false;
+        return true;
+    }
 
-    /// <summary> Creates a new order of pieces to be spawned. </summary>
+    // ── Piece Order ───────────────────────────────────────────────────────────────
+
     private void CreateNewOrder()
     {
         _tempPieceList.Clear();
-
-        for (int i = 0; i < _tetrominoPrefab.Length; i++) // Copy of list to determine randomized order
-        {
+        for (int i = 0; i < _tetrominoPrefab.Length; i++)
             _tempPieceList.Add(new Tuple<int, GameObject>(i, _tetrominoPrefab[i]));
-        }
 
-        for (int i = 0; i < _tetrominoPrefab.Length; i++) // Add to pieceOrder list
+        for (int i = 0; i < _tetrominoPrefab.Length; i++)
         {
-            int randomIndex = UnityEngine.Random.Range(0, _tempPieceList.Count);
-            _pieceOrder.Add(new Tuple<int, GameObject>(_tempPieceList[randomIndex].Item1, _tempPieceList[randomIndex].Item2));
-            _tempPieceList.RemoveAt(randomIndex);
+            int idx = UnityEngine.Random.Range(0, _tempPieceList.Count);
+            _pieceOrder.Add(_tempPieceList[idx]);
+            _tempPieceList.RemoveAt(idx);
         }
     }
 
-    // -----------------------MOVE HELPERS-----------------------
+    // ── Move Helpers ──────────────────────────────────────────────────────────────
+
     private void HardDrop()
     {
+        if (_currentPiece == null) return;
+
+        // Measure drop distance for the 2 pt/row bonus (no level multiplier per guideline)
+        Vector2Int[] before = _currentPiece.GetPositions();
+        int startY = before[0].y;
+        for (int i = 1; i < before.Length; i++)
+            if (before[i].y < startY) startY = before[i].y;
+
         _forceHardDrop = true;
-        _currentPiece?.HardDrop();
-        SetBlocksInactive();
+        _currentPiece.HardDrop();
+
+        Vector2Int[] after = _currentPiece.GetPositions();
+        int endY = after[0].y;
+        for (int i = 1; i < after.Length; i++)
+            if (after[i].y < endY) endY = after[i].y;
+
+        int rowsDropped = startY - endY;
+        if (rowsDropped > 0) _grid.AddDropPoints(rowsDropped * 2);
+
+        SFXManager.Instance?.PlayHardDrop();
+        // NOTE: piece locking is handled by BlockFall/LockDelay via _forceHardDrop
     }
 
     private void HoldPiece()
     {
-        if (_recentlyHeld || _currentPiece == null) // Prevent multiple holds in one turn
-            return;
+        if (_recentlyHeld || _currentPiece == null) return;
         _recentlyHeld = true;
+        SFXManager.Instance?.PlayHold();
         _spawnHeld = _hold.UpdateHold((int)_currentPiece.GetPieceType());
         Destroy(_currentPiece.gameObject);
         _currentPiece = null;
     }
 
-    // Function to set hold states, only needed for keys that can be presse (move left, right and down)
     private void OnMoveStart(Vector2Int direction)
     {
-        //Debug.Log($"Move started: {direction}");
-
-        // Remember x and y are reffered to as poistions in the array, not unity coordinates
         if (direction.x < 0)
             _holdLeft.StartHold();
         else if (direction.x > 0)
             _holdRight.StartHold();
         else if (direction.y < 0)
+        {
             _holdDown.StartHold();
+            SFXManager.Instance?.PlaySoftDrop();
+        }
         _recentlyMovedByPlayer = true;
     }
 
-    // Function to set hold states false, appended to move end
     private void OnMoveEnd(Vector2Int direction)
     {
-        //Debug.Log($"Move ended: {direction}");
         if (direction.x < 0)
             _holdLeft.StopHold();
         else if (direction.x > 0)
@@ -225,24 +310,27 @@ public class PieceController : MonoBehaviour
             _holdDown.StopHold();
     }
 
-    // -----------------------SPAWN PIECE-----------------------
+    // ── Spawn Piece ───────────────────────────────────────────────────────────────
 
     private void SpawnPiece()
     {
-        _timeToFall -= 0.0015f;
-        print($"Time to fall: {_timeToFall}");
-        _forceHardDrop = false;
+        int level       = _grid.GetLevel();
+        _timeToFall     = GetFallSpeedForLevel(level);
+        _lockDelay      = GetLockDelayForLevel(level);
+        _maxLockDelay   = _lockDelay * 3f;   // absolute ceiling = 3× the step budget
+        _maxMoveResets  = GetMaxResetsForLevel(level);
+        _softDropRows   = 0;
+        _forceHardDrop  = false;
         GameObject pieceObj = null;
 
-        // Random(ish) Piece Order
-        if (_pieceOrder.Count <= 5)
-            CreateNewOrder();
-        if (_spawnHeld >= 0) // If we are using a set piece, we only spawn one piece
+        if (_pieceOrder.Count <= 5) CreateNewOrder();
+
+        if (_spawnHeld >= 0)
         {
-            pieceObj = Instantiate(_tetrominoPrefab[_spawnHeld]);
+            pieceObj   = Instantiate(_tetrominoPrefab[_spawnHeld]);
             _spawnHeld = -1;
         }
-        else if (_setPiece) // If we are using a set piece, we only spawn one piece
+        else if (_setPiece)
             pieceObj = Instantiate(_tetrominoPrefab[4]);
         else
         {
@@ -250,30 +338,36 @@ public class PieceController : MonoBehaviour
             _pieceOrder.RemoveAt(0);
         }
 
-        // Update preview with next pieces
-        int[] list = new int[] { _pieceOrder[0].Item1, _pieceOrder[1].Item1, _pieceOrder[2].Item1, _pieceOrder[3].Item1 };
-        _preview.UpdatePreview(list);
-
+        int[] preview = { _pieceOrder[0].Item1, _pieceOrder[1].Item1,
+                          _pieceOrder[2].Item1, _pieceOrder[3].Item1 };
+        _preview.UpdatePreview(preview);
 
         _currentPiece = pieceObj.GetComponent<PieceScript>();
         _currentPiece.SetGrid(_grid);
         Vector2Int[] initialPositions = _currentPiece.GetInitialPositions();
         _currentPiece.SetPositions(initialPositions);
 
-        bool canSpawn = _currentPiece.CheckBlockLocations(initialPositions);
-        if (!canSpawn)
+        if (!_currentPiece.CheckBlockLocations(initialPositions))
         {
-            // Eventually this will be a condition to end the game
+            // Top-out — trigger game over
+            _gameOver = true;
+            if (_fallRoutine != null) StopCoroutine(_fallRoutine);
+            Destroy(_currentPiece.gameObject);
+            _currentPiece = null;
+            GameOverScreen.ShowGameOver(_grid.GetTotalScore(), _grid.GetLevel(), _grid.GetLinesCleared());
             return;
         }
 
-        //PrintVector2Array(_initialPositions);
         _currentPiece.SpawnBlocks(initialPositions);
-        _recentlyHeld = false; // Reset hold ability (otherwise can sometimes get stuck)
-        _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType()); //extra call to update outline on spawn
+        _lastPositions = _currentPiece.GetPositions(); // copy (not alias) so PositionsEqual stays valid as the piece moves
+        // NOTE: _recentlyHeld is intentionally NOT reset here.
+        // It is only cleared in SetBlocksInactive (natural lock) so that a piece
+        // that arrived via a hold swap cannot be immediately swapped again.
+        // Resetting here was the bug that allowed infinite hold cycling.
+        _outline.UpdateOutline(_currentPiece.GetOutlineVectors(), _currentPiece.GetPieceType());
     }
 
-    // -----------------------PRIVATE IENUMERATOR (AND HELPERS)-----------------------
+    // ── Coroutines ────────────────────────────────────────────────────────────────
 
     private IEnumerator BlockFall()
     {
@@ -281,23 +375,15 @@ public class PieceController : MonoBehaviour
         {
             if (_currentPiece == null)
             {
-                yield return .05;
+                yield return new WaitForSeconds(0.05f);
                 SpawnPiece();
                 continue;
             }
 
-            bool canMoveDown = _currentPiece.TestOffset(new Vector2Int(0, -1)); // Can we place below?
-
-            if (canMoveDown) // Normal falling, using a timer here instead of waitForSeconds so it can be interrupted
-            {
+            if (_currentPiece.TestOffset(DOWN))
                 yield return WaitAndFall();
-            }
-
-            else // Lock Delay
-            {
+            else
                 yield return LockDelay();
-            }
-
         }
     }
 
@@ -315,83 +401,88 @@ public class PieceController : MonoBehaviour
 
     private IEnumerator LockDelay()
     {
-        float timer = 0;
-        bool canMoveDown = false;
-        float lastLockDelay = 0; // add the differencv between the last lock delay and the current one
-        float currentMaxtime = Math.Min(_timeToFall, _lockDelay);
-        bool newMovePossible = false;
+        // ── SRS Extended Placement / Lock Delay ───────────────────────────────────
+        // Rules (Tetris Guideline + competitive scaling):
+        //   • Player gets _lockDelay seconds per grounded step (shrinks with level).
+        //   • Each successful move/rotate resets the step timer, up to _maxMoveResets
+        //     times total (also shrinks with level — prevents infinite floor-sliding).
+        //   • _maxLockDelay is an absolute ceiling on the whole lock phase (3× step).
+        //   • If a move/rotate kicks the piece off the floor, lock phase exits cleanly
+        //     and gravity resumes at the normal _timeToFall rate (no immediate drop).
+        // ─────────────────────────────────────────────────────────────────────────
 
-        while (timer < currentMaxtime && !_forceHardDrop)
+        float stepTimer  = 0f;
+        float totalTimer = 0f;
+        int   moveResets = 0;
+
+        while (!_forceHardDrop && _currentPiece != null)
         {
-            //Debug.Log(timer);
-            if ((_recentlyMovedByPlayer || _recentlyRotatedByPlayer) && !newMovePossible)
+            float dt = Time.deltaTime;
+            stepTimer  += dt;
+            totalTimer += dt;
+
+            if (_recentlyMovedByPlayer || _recentlyRotatedByPlayer)
             {
-                newMovePossible = canMoveDown = _currentPiece.TestOffset(new Vector2Int(0, -1));
-                currentMaxtime = Math.Min(currentMaxtime + _lockDelay - lastLockDelay, _maxLockDelay);
-                lastLockDelay = .5f;
+                // Piece moved/rotated off the floor — hand control back to gravity
+                // WITHOUT an immediate drop so the full _timeToFall delay applies.
+                if (_currentPiece.TestOffset(DOWN))
+                    yield break;
+
+                // Still grounded — reset the step timer if resets remain
+                if (moveResets < _maxMoveResets)
+                {
+                    stepTimer = 0f;
+                    moveResets++;
+                }
             }
-            timer += Time.deltaTime;
-            lastLockDelay = Math.Max(0f, lastLockDelay - Time.deltaTime);
+
+            if (stepTimer >= _lockDelay || totalTimer >= _maxLockDelay)
+                break;
+
             yield return null;
         }
-        if (canMoveDown && !_forceHardDrop)
-        {
-            _currentPiece.TryMovePiece(new Vector2Int(0, -1));
-        }
-        else
-        {
+
+        // Lock the piece (natural expiry or hard drop)
+        if (_currentPiece != null)
             yield return SetBlocksInactive();
-        }
     }
 
-
-    /// <summary>
-    /// Sets the blocks of the current piece to inactive and handles destruction if needed.
-    /// </summary>
-    /// <returns>IEnumerator</returns>
     private IEnumerator SetBlocksInactive()
     {
-        if (_currentPiece == null)
-            yield break; // No current piece to set inactive
+        if (_currentPiece == null) yield break;
 
+        // Award soft-drop bonus (1 pt/row, no level multiplier per guideline)
+        if (_softDropRows > 0) _grid.AddDropPoints(_softDropRows);
 
-        bool isFull = _currentPiece.SetBlocksInactive(gameObject); //isRowFull?
+        bool isFull = _currentPiece.SetBlocksInactive(gameObject);
         if (isFull)
         {
-            yield return new WaitForSeconds(Global.effectDuration); // suspends the coroutine for duration of effect
-            PieceInfo _pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
+            yield return new WaitForSeconds(Global.effectDuration);
+            PieceInfo pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
             _grid.IncrementScore();
-            _currentPiece.FinishDestroy(_pieceInfo);
-        } else
+            _currentPiece.FinishDestroy(pieceInfo);
+        }
+        else
         {
             _grid.ResetScoreStreak();
         }
 
-            _currentPiece = null;
-        _recentlyHeld = false; // Reset hold ability
-
-        yield break;
+        _currentPiece = null;
+        _recentlyHeld = false;
     }
 
-    // -----------------------PUBLIC METHODS-----------------------
+    // ── Public API ────────────────────────────────────────────────────────────────
 
-    public void SetGrid(BlockGrid grid) { _grid = grid; }
-
-    public void SetHold(Hold hold) { _hold = hold; ; }
-
+    public void SetGrid(BlockGrid grid)     { _grid    = grid;    }
+    public void SetHold(Hold hold)          { _hold    = hold;    }
     public void SetPreview(Preview preview) { _preview = preview; }
-
     public void SetOutline(Outline outline) { _outline = outline; }
-
-    public void SetPlayerID(int id) { _playerID = id; }
+    public void SetPlayerID(int id)         { _playerID = id;     }
 
     public static void PrintVector2Array(Vector2Int[] vectors, string label = "Vector2 Array")
     {
         string result = label + ": [ ";
-        foreach (Vector2 v in vectors)
-        {
-            result += $"({v.x}, {v.y}) ";
-        }
+        foreach (Vector2 v in vectors) result += $"({v.x}, {v.y}) ";
         result += "]";
         Debug.Log(result);
     }
