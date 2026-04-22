@@ -1,0 +1,1500 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using TMPro;
+
+/// <summary>
+/// BLOCK BATTLE - Main Menu / Intro Screen.
+///
+/// Self-bootstrapping Tetris-99-style menu with 5 tabs:
+///   1. SINGLEPLAYER  (default - press ENTER to launch the Singleplayer scene)
+///   2. MULTIPLAYER   (locked / grayed out - coming soon)
+///   3. CONTROLS      (keyboard + joystick reference sheet)
+///   4. LEADERBOARD   (reuses Leaderboard.cs - top 10)
+///   5. ABOUT         (credits + game blurb)
+///
+/// Setup in Unity:
+///   • Create an empty scene (e.g. "MainMenu.unity") and add it to Build Settings
+///     BEFORE the "Singleplayer" scene.
+///   • Add an empty GameObject, attach this MainMenu component.
+///   • Optionally drop a Sprite into the "Background Image" field to replace
+///     the procedural placeholder background.
+///
+/// Design patterns cribbed from GameOverScreen.cs: the entire canvas is built
+/// at runtime (no prefabs), every panel uses UIRoundedSprite.Default for its
+/// rounded-rect background, and input is polled through Keyboard/Gamepad
+/// fallbacks (TetrixInputManager isn't registered on the menu scene because
+/// no player exists yet).
+///
+/// Layout:
+///   The five tabs live as a big vertical column on the LEFT THIRD of the
+///   screen (prominent, readable cards). The selected tab's content fills the
+///   RIGHT TWO-THIRDS. Hovering a tab adds an outline + scales it up.
+///
+/// Navigation:
+///   UP / DOWN   (or W / S / ← / →)  → cycle tab
+///   ENTER / SPACE                   → activate current tab
+///   ESC                             → quit application
+///   Click / Hover                   → select tab / show outline
+/// </summary>
+public class MainMenu : MonoBehaviour
+{
+    // ── Inspector ────────────────────────────────────────────────────────────
+
+    [Header("Optional - drop a Sprite here to replace the placeholder BG.")]
+    [SerializeField] private Sprite backgroundImage;
+
+    [Header("Scene to load when Singleplayer is activated.")]
+    [SerializeField] private string singleplayerSceneName = "Singleplayer";
+
+    // ── Tab definitions ──────────────────────────────────────────────────────
+
+    private enum TabID { Singleplayer = 0, Multiplayer = 1, Controls = 2, Leaderboard = 3, About = 4 }
+
+    // The five piece colors, one per tab - I(cyan), gray(locked), L(orange),
+    // O(yellow), T(purple). Matches the tetromino palette most players expect.
+    private static readonly Color[] TabColors =
+    {
+        new(0.00f, 0.74f, 0.83f, 1f),  // Singleplayer - I cyan
+        new(0.40f, 0.40f, 0.45f, 1f),  // Multiplayer  - locked gray
+        new(1.00f, 0.60f, 0.12f, 1f),  // Controls     - L orange
+        new(1.00f, 0.85f, 0.13f, 1f),  // Leaderboard  - O yellow
+        new(0.67f, 0.28f, 0.85f, 1f),  // About        - T purple
+    };
+
+    private static readonly string[] TabLabels = { "SINGLEPLAYER", "MULTIPLAYER", "CONTROLS", "LEADERBOARD", "ABOUT" };
+
+    // ── Layout constants (centralized so widths/anchors stay in sync) ────────
+
+    // Left-column tabs - anchored top-left, pivot left-center so `basePos`
+    // is the tab's left-middle point (easy to slide right on hover/select).
+    private const float TabColX         = 60f;
+    private const float TabColTopY      = -250f;   // y of the first tab's top edge
+    private const float TabWidth        = 460f;
+    private const float TabHeight       = 108f;
+    private const float TabGap          = 22f;
+    private const float TabOutlineInset = 6f;      // how far the outline peeks around the tab
+
+    // Right-side content panel - anchored top-right, fills the remaining 2/3.
+    private const float PanelMarginR = 60f;
+    private const float PanelTopY    = -250f;
+    private const float PanelWidth   = 1260f;
+    private const float PanelHeight  = 720f;
+
+    // ── Runtime state ────────────────────────────────────────────────────────
+
+    private TabID _currentTab = TabID.Singleplayer;
+    private readonly List<GameObject>       _tabButtons   = new();
+    private readonly List<Image>            _tabBgs       = new();
+    private readonly List<Image>            _tabOutlines  = new();
+    private readonly List<TextMeshProUGUI>  _tabLabels    = new();
+    private readonly List<RectTransform>    _tabRects     = new();
+    private readonly List<TabHoverTracker>  _tabHovers    = new();
+    private readonly List<GameObject>       _panels       = new();
+
+    private TextMeshProUGUI _titleText;
+    private TextMeshProUGUI _hintText;
+    private TextMeshProUGUI _playPromptText;   // big flashing "PRESS ENTER" on SP tab
+    private RectTransform   _rotatingTPiece;   // purple T-piece preview on SP tab
+    private readonly List<FallingPiece> _bgPieces = new();
+
+    // When input is ready (consumes leftover input from previous scene/frame)
+    private float _inputReadyAt = 0f;
+    private const float InputGraceSeconds = 0.1f;
+
+    // ── Falling-block background data ────────────────────────────────────────
+
+    // Each "falling piece" is one procedural tetromino made of four cells.
+    // We just translate the parent RectTransform every frame and wrap to top
+    // when it drifts past the bottom of the screen. Cheap and infinite.
+    private class FallingPiece
+    {
+        public RectTransform root;
+        public float         speed;       // px / second (scaled)
+        public float         rotateSpeed; // deg / second
+        public Color         color;
+    }
+
+    // Pointer hover tracking for a tab. Attached to the tab's container GO;
+    // events bubble up from the child bg Image (raycastTarget=true) via Unity's
+    // EventSystem, so hovering the card flips isHovered for AnimateTabs to read.
+    private class TabHoverTracker : MonoBehaviour,
+        IPointerEnterHandler, IPointerExitHandler
+    {
+        public bool isHovered;
+        public void OnPointerEnter(PointerEventData _) { isHovered = true; }
+        public void OnPointerExit(PointerEventData _)  { isHovered = false; }
+    }
+
+    // ── Unity lifecycle ──────────────────────────────────────────────────────
+
+    private void Awake()
+    {
+        EnsureEventSystem();
+        BuildCanvas();
+        SelectTab(TabID.Singleplayer, animate: false);
+        _inputReadyAt = Time.unscaledTime + InputGraceSeconds;
+
+        // Kick off the looping menu track. Null-safe: if no SFXManager exists
+        // in the scene (easy to forget when building the menu scene fresh),
+        // the menu still runs silently rather than throwing. The music also
+        // no-ops if the _introMusic slot hasn't been filled yet.
+        SFXManager.Instance?.PlayIntroMusic();
+    }
+
+    private void Update()
+    {
+        AnimateBackground();
+        AnimateTitle();
+        AnimateTabs();
+        AnimateSingleplayerTab();
+
+        if (Time.unscaledTime < _inputReadyAt) return;
+        HandleInput();
+    }
+
+    // ── Input ────────────────────────────────────────────────────────────────
+
+    private void HandleInput()
+    {
+        var kb = Keyboard.current;
+        var gp = Gamepad.current;
+
+        // Tabs are now a vertical column, so UP/DOWN is the natural axis.
+        // LEFT/RIGHT is kept as an alias for muscle memory from the old layout.
+        bool prev = (kb != null && (kb.upArrowKey.wasPressedThisFrame    || kb.wKey.wasPressedThisFrame
+                                 || kb.leftArrowKey.wasPressedThisFrame  || kb.aKey.wasPressedThisFrame))
+                 || (gp != null && (gp.dpad.up.wasPressedThisFrame       || gp.leftStick.up.wasPressedThisFrame
+                                 || gp.dpad.left.wasPressedThisFrame     || gp.leftStick.left.wasPressedThisFrame));
+        bool next = (kb != null && (kb.downArrowKey.wasPressedThisFrame  || kb.sKey.wasPressedThisFrame
+                                 || kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame))
+                 || (gp != null && (gp.dpad.down.wasPressedThisFrame     || gp.leftStick.down.wasPressedThisFrame
+                                 || gp.dpad.right.wasPressedThisFrame    || gp.leftStick.right.wasPressedThisFrame));
+        bool enter = (kb != null && (kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame))
+                  || (gp != null &&  gp.buttonSouth.wasPressedThisFrame);
+        bool quit  = (kb != null &&  kb.escapeKey.wasPressedThisFrame);
+
+        if (prev)  SelectTab((TabID)(((int)_currentTab + TabColors.Length - 1) % TabColors.Length));
+        if (next)  SelectTab((TabID)(((int)_currentTab + 1) % TabColors.Length));
+        if (enter) ActivateCurrentTab();
+        if (quit)  QuitGame();
+    }
+
+    private void ActivateCurrentTab()
+    {
+        switch (_currentTab)
+        {
+            case TabID.Singleplayer:
+                SceneManager.LoadScene(singleplayerSceneName);
+                break;
+            case TabID.Multiplayer:
+                // Shake the locked panel as feedback.
+                StopAllCoroutines();
+                StartCoroutine(ShakeLockedPanel());
+                break;
+            // Other tabs are info-only - nothing to activate.
+        }
+    }
+
+    private System.Collections.IEnumerator ShakeLockedPanel()
+    {
+        RectTransform rt = _panels[(int)TabID.Multiplayer].GetComponent<RectTransform>();
+        Vector2 basePos = rt.anchoredPosition;
+        float dur = 0.35f;
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Sin(t * 80f) * 14f * (1f - t / dur);
+            rt.anchoredPosition = basePos + new Vector2(k, 0f);
+            yield return null;
+        }
+        rt.anchoredPosition = basePos;
+    }
+
+    private void QuitGame()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+
+    // ── Tab switching ────────────────────────────────────────────────────────
+
+    private void SelectTab(TabID tab, bool animate = true)
+    {
+        // Only fire the tick when the selection actually moves AND we're past
+        // the initial silent setup. `animate=false` is used by Awake's initial
+        // SelectTab call, which shouldn't play a sound before the menu has
+        // even appeared. `tab != _currentTab` guards against a rapid repeat
+        // click on the already-active tab spamming the SFX.
+        bool changed = (tab != _currentTab);
+        _currentTab = tab;
+        for (int i = 0; i < _panels.Count; i++)
+            _panels[i].SetActive(i == (int)tab);
+
+        if (animate && changed)
+            SFXManager.Instance?.PlayTabChange();
+
+        // Refresh dynamic content on entry.
+        if (tab == TabID.Leaderboard) RefreshLeaderboardPanel();
+
+        // Footer hint per tab.
+        switch (tab)
+        {
+            case TabID.Singleplayer: _hintText.text = "▲ ▼  CHANGE TAB     ENTER / SPACE  START GAME     ESC  QUIT"; break;
+            case TabID.Multiplayer:  _hintText.text = "▲ ▼  CHANGE TAB     MULTIPLAYER COMING SOON";                 break;
+            case TabID.Controls:     _hintText.text = "▲ ▼  CHANGE TAB     ARCADE CABINET BINDINGS";                break;
+            case TabID.Leaderboard:  _hintText.text = "▲ ▼  CHANGE TAB     LOCAL TOP-10 SCORES";                     break;
+            case TabID.About:        _hintText.text = "▲ ▼  CHANGE TAB     ABOUT BLOCK BATTLE";                      break;
+        }
+    }
+
+    // ── Animations ───────────────────────────────────────────────────────────
+
+    private float _titleHue = 0f;
+    private void AnimateTitle()
+    {
+        // Slowly cycle the title hue - gives the top banner a subtle rainbow
+        // pulse that never sits still. Using HSV so saturation stays vivid.
+        _titleHue = Mathf.Repeat(_titleHue + Time.unscaledDeltaTime * 0.08f, 1f);
+        _titleText.color = Color.HSVToRGB(_titleHue, 0.85f, 1f);
+    }
+
+    private void AnimateTabs()
+    {
+        float t = Time.unscaledTime;
+        for (int i = 0; i < _tabRects.Count; i++)
+        {
+            bool isCurrent = (i == (int)_currentTab);
+            bool isHovered = _tabHovers[i] != null && _tabHovers[i].isHovered;
+
+            // Scale: selected > hovered > idle. Smoothly lerp so it's buttery.
+            float targetScale = isCurrent ? 1.10f : (isHovered ? 1.06f : 1.00f);
+            Vector3 s = _tabRects[i].localScale;
+            s.x = Mathf.Lerp(s.x, targetScale, 12f * Time.unscaledDeltaTime);
+            s.y = Mathf.Lerp(s.y, targetScale, 12f * Time.unscaledDeltaTime);
+            _tabRects[i].localScale = new Vector3(s.x, s.y, 1f);
+
+            // Tabs are anchored - selection is communicated via scale, bg color
+            // and the pulsing outline only. Cam specifically wants the column to
+            // stay rock-solid when flipping tabs, so no horizontal slide on
+            // either the selected OR the hovered state. Lerp toward the stored
+            // baseline each frame in case an earlier animation (or the shake
+            // coroutine on the locked panel) nudged things off-axis.
+            Vector2 baseAnchor = (Vector2)_tabRects[i].GetComponent<TabBaseline>().basePos;
+            _tabRects[i].anchoredPosition = Vector2.Lerp(
+                _tabRects[i].anchoredPosition, baseAnchor, 14f * Time.unscaledDeltaTime);
+
+            // Tab background. Multiplayer (locked) never brightens; normal tabs
+            // get a mid tone on hover so the active state still stands out.
+            Color baseCol = TabColors[i];
+            Color bgTarget = i == (int)TabID.Multiplayer
+                ? new Color(baseCol.r, baseCol.g, baseCol.b, 0.55f)
+                : isCurrent
+                    ? baseCol
+                    : isHovered
+                        ? new Color(baseCol.r * 0.85f, baseCol.g * 0.85f, baseCol.b * 0.85f, 0.95f)
+                        : new Color(baseCol.r * 0.55f, baseCol.g * 0.55f, baseCol.b * 0.55f, 0.85f);
+            _tabBgs[i].color = Color.Lerp(_tabBgs[i].color, bgTarget, 8f * Time.unscaledDeltaTime);
+
+            Color labelTarget = (isCurrent || isHovered)
+                ? Color.white
+                : new Color(1f, 1f, 1f, i == (int)TabID.Multiplayer ? 0.55f : 0.78f);
+            _tabLabels[i].color = Color.Lerp(_tabLabels[i].color, labelTarget, 8f * Time.unscaledDeltaTime);
+
+            // Outline: pulsing white when selected, tinted glow when hovered,
+            // invisible otherwise. The outline image sits BEHIND the bg (earlier
+            // sibling in the tab container), so only its rim peeks out.
+            Color outlineTarget;
+            if (isCurrent)
+                outlineTarget = new Color(1f, 1f, 1f, 0.85f + 0.15f * Mathf.Sin(t * 5f));
+            else if (isHovered)
+                outlineTarget = new Color(baseCol.r, baseCol.g, baseCol.b, 0.85f);
+            else
+                outlineTarget = new Color(baseCol.r, baseCol.g, baseCol.b, 0f);
+            _tabOutlines[i].color = Color.Lerp(
+                _tabOutlines[i].color, outlineTarget, 12f * Time.unscaledDeltaTime);
+        }
+    }
+
+    private void AnimateSingleplayerTab()
+    {
+        if (_rotatingTPiece != null && _panels[(int)TabID.Singleplayer].activeSelf)
+            _rotatingTPiece.localEulerAngles = new Vector3(0f, 0f, Time.unscaledTime * 45f);
+
+        if (_playPromptText != null && _panels[(int)TabID.Singleplayer].activeSelf)
+        {
+            // Gentle breathing on the "PRESS ENTER" prompt.
+            float a = 0.55f + 0.45f * Mathf.Sin(Time.unscaledTime * 3.2f);
+            Color c = _playPromptText.color;
+            _playPromptText.color = new Color(c.r, c.g, c.b, a);
+        }
+    }
+
+    private void AnimateBackground()
+    {
+        // Drift each piece downward; wrap back to top with a new x / color once
+        // it leaves the screen. Speed / rotate-speed were seeded once at spawn
+        // for parallax-ish variation.
+        Rect screen = ((RectTransform)transform).rect;
+        float bottomY = -screen.height * 0.5f - 80f;
+        float topY    =  screen.height * 0.5f + 80f;
+
+        for (int i = 0; i < _bgPieces.Count; i++)
+        {
+            var p = _bgPieces[i];
+            Vector2 pos = p.root.anchoredPosition;
+            pos.y -= p.speed * Time.unscaledDeltaTime;
+
+            if (pos.y < bottomY)
+            {
+                pos.y = topY;
+                pos.x = Random.Range(-screen.width * 0.48f, screen.width * 0.48f);
+                p.color = RandomPieceColor();
+                foreach (Image img in p.root.GetComponentsInChildren<Image>())
+                    img.color = new Color(p.color.r, p.color.g, p.color.b, 0.22f);
+            }
+            p.root.anchoredPosition = pos;
+            p.root.localEulerAngles  = new Vector3(0f, 0f, Time.unscaledTime * p.rotateSpeed);
+        }
+    }
+
+    // Helper: tiny MonoBehaviour used only to cache each tab's baseline anchor
+    // position, so AnimateTabs can bob around a stable reference point.
+    private class TabBaseline : MonoBehaviour { public Vector2 basePos; }
+
+    // ── Canvas / UI construction ─────────────────────────────────────────────
+
+    private static void EnsureEventSystem()
+    {
+        if (EventSystem.current != null) return;
+        GameObject es = new GameObject("EventSystem");
+        es.AddComponent<EventSystem>();
+        es.AddComponent<InputSystemUIInputModule>();
+    }
+
+    private void BuildCanvas()
+    {
+        Canvas canvas = gameObject.AddComponent<Canvas>();
+        canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 10;
+
+        CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.screenMatchMode     = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight  = 0.5f;
+
+        gameObject.AddComponent<GraphicRaycaster>();
+
+        BuildBackground();
+        BuildFallingPieces(count: 11);
+        BuildTitleBar();
+        BuildTabBar();
+        BuildAllPanels();
+        BuildFooter();
+    }
+
+    private void BuildBackground()
+    {
+        // Layer 1: replaceable placeholder image (or procedural navy fill).
+        GameObject bg = new GameObject("Background");
+        bg.transform.SetParent(transform, false);
+        Image bgImg = bg.AddComponent<Image>();
+        if (backgroundImage != null)
+        {
+            bgImg.sprite        = backgroundImage;
+            bgImg.preserveAspect = false;
+            bgImg.color          = Color.white;
+        }
+        else
+        {
+            bgImg.color = new Color(0.035f, 0.04f, 0.09f, 1f); // deep navy
+        }
+        bgImg.raycastTarget = false;
+        StretchFull(bg.GetComponent<RectTransform>());
+
+        // Layer 2: vertical gradient overlay (dark top → purple bottom). Baked
+        // once into a small texture so we don't ship a shader.
+        GameObject grad = new GameObject("Gradient");
+        grad.transform.SetParent(transform, false);
+        Image gImg = grad.AddComponent<Image>();
+        gImg.sprite        = BuildGradientSprite();
+        gImg.preserveAspect = false;
+        gImg.color         = new Color(1f, 1f, 1f, 0.55f);
+        gImg.raycastTarget = false;
+        StretchFull(grad.GetComponent<RectTransform>());
+
+        // Layer 3: grid pattern overlay - gives the impression of a faint
+        // tetris playfield behind everything.
+        GameObject grid = new GameObject("GridOverlay");
+        grid.transform.SetParent(transform, false);
+        Image grImg = grid.AddComponent<Image>();
+        grImg.sprite        = BuildGridSprite();
+        grImg.type          = Image.Type.Tiled;
+        grImg.color         = new Color(1f, 1f, 1f, 0.05f);
+        grImg.raycastTarget = false;
+        StretchFull(grid.GetComponent<RectTransform>());
+    }
+
+    private void BuildFallingPieces(int count)
+    {
+        // Seed the layer behind everything - parented to transform, sandwiched
+        // above the gradient/grid overlay but below the title/tabs/panels.
+        // Construct with RectTransform from the start; it's the safer pattern
+        // for UI containers that don't also host a Graphic component.
+        GameObject layer = new GameObject("FallingPieces", typeof(RectTransform));
+        layer.transform.SetParent(transform, false);
+        StretchFull((RectTransform)layer.transform);
+
+        Rect screen = ((RectTransform)transform).rect;
+        for (int i = 0; i < count; i++)
+        {
+            var piece = BuildOneFallingPiece(layer.transform);
+            Vector2 pos = new Vector2(
+                Random.Range(-screen.width * 0.48f, screen.width * 0.48f),
+                Random.Range(-screen.height * 0.5f, screen.height * 0.5f));
+            piece.root.anchoredPosition = pos;
+            piece.speed       = Random.Range(35f, 95f);
+            piece.rotateSpeed = Random.Range(-25f, 25f);
+            _bgPieces.Add(piece);
+        }
+    }
+
+    private FallingPiece BuildOneFallingPiece(Transform parent)
+    {
+        // Pick a random tetromino shape; draw it with 4 rounded squares of a
+        // chosen color. Low alpha so it's visibly behind the content.
+        Vector2Int[][] shapes = Tetrominoes;
+        Vector2Int[] cells = shapes[Random.Range(0, shapes.Length)];
+
+        GameObject root = new GameObject("Piece", typeof(RectTransform));
+        root.transform.SetParent(parent, false);
+        RectTransform rr = (RectTransform)root.transform;
+        rr.anchorMin = new Vector2(0.5f, 0.5f);
+        rr.anchorMax = new Vector2(0.5f, 0.5f);
+        rr.pivot     = new Vector2(0.5f, 0.5f);
+        rr.sizeDelta = new Vector2(220f, 220f); // doesn't matter much; cells use absolute offsets
+
+        Color c = RandomPieceColor();
+        const float cellSize = 48f;
+        foreach (var cell in cells)
+        {
+            GameObject cellGo = new GameObject("cell");
+            cellGo.transform.SetParent(root.transform, false);
+            Image img = cellGo.AddComponent<Image>();
+            img.sprite = UIRoundedSprite.Default;
+            img.type   = Image.Type.Sliced;
+            img.color  = new Color(c.r, c.g, c.b, 0.22f);
+            img.raycastTarget = false;
+            RectTransform rt = cellGo.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot     = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(cellSize - 4f, cellSize - 4f);
+            rt.anchoredPosition = new Vector2(cell.x * cellSize, cell.y * cellSize);
+        }
+
+        return new FallingPiece { root = rr, color = c };
+    }
+
+    // Canonical tetromino cell offsets (centered on origin-ish).
+    private static readonly Vector2Int[][] Tetrominoes =
+    {
+        new[] { new Vector2Int(-1, 0), new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(2, 0) },   // I
+        new[] { new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(0, 1), new Vector2Int(1, 1) },    // O
+        new[] { new Vector2Int(-1, 0), new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(0, 1) },   // T
+        new[] { new Vector2Int(-1, 0), new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(-1, 1) },  // J
+        new[] { new Vector2Int(-1, 0), new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(1, 1) },   // L
+        new[] { new Vector2Int(-1, 0), new Vector2Int(0, 0), new Vector2Int(0, 1), new Vector2Int(1, 1) },   // S
+        new[] { new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(-1, 1), new Vector2Int(0, 1) },   // Z
+    };
+
+    private static Color RandomPieceColor()
+    {
+        // Palette roughly matches the classic tetromino colors.
+        Color[] palette =
+        {
+            new(0.00f, 0.74f, 0.83f),  // I
+            new(1.00f, 0.85f, 0.13f),  // O
+            new(0.67f, 0.28f, 0.85f),  // T
+            new(0.13f, 0.41f, 0.95f),  // J
+            new(1.00f, 0.60f, 0.12f),  // L
+            new(0.30f, 0.85f, 0.35f),  // S
+            new(0.95f, 0.20f, 0.30f),  // Z
+        };
+        return palette[Random.Range(0, palette.Length)];
+    }
+
+    // ── Title bar ────────────────────────────────────────────────────────────
+
+    private void BuildTitleBar()
+    {
+        // "BLOCK BATTLE" across the top. Subtitle sits safely ABOVE the tab
+        // column - the old layout had them overlapping because the horizontal
+        // tabs landed at y=-215 and the subtitle ended at y=-230.
+        _titleText = CreateLabel(transform, "BLOCK BATTLE",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, -40f), size: new Vector2(1700f, 130f),
+            fontSize: 110f, color: new Color(0f, 0.85f, 1f), style: FontStyles.Bold,
+            alignment: TextAlignmentOptions.Center);
+
+        CreateLabel(transform, "- SINGLEPLAYER TETRIS, CAM'S EDITION -",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, -180f), size: new Vector2(1700f, 40f),
+            fontSize: 26f, color: new Color(1f, 1f, 1f, 0.65f), style: FontStyles.Italic,
+            alignment: TextAlignmentOptions.Center);
+    }
+
+    // ── Tab bar ──────────────────────────────────────────────────────────────
+
+    private void BuildTabBar()
+    {
+        // Five big stacked cards on the LEFT THIRD of the screen. Each tab is a
+        // pure-container RectTransform that holds children in this order:
+        //   0. outline Image   (slightly larger, rendered behind → only rim shows)
+        //   1. bg Image        (colored rounded card, raycastTarget=true)
+        //   2. text label      (left-aligned, menu-list feel)
+        //   3. lock icon       (multiplayer only - procedural, not emoji)
+        //
+        // Button + TabHoverTracker live on the container; events bubble up from
+        // the bg Image so clicks and hovers register on the whole card.
+
+        for (int i = 0; i < TabLabels.Length; i++)
+        {
+            // `y` is the tab's left-center, since pivot is (0, 0.5).
+            float y = TabColTopY - i * (TabHeight + TabGap) - TabHeight * 0.5f;
+
+            GameObject tab = new GameObject($"Tab_{TabLabels[i]}", typeof(RectTransform));
+            tab.transform.SetParent(transform, false);
+
+            RectTransform rt = (RectTransform)tab.transform;
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot     = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(TabColX, y);
+            rt.sizeDelta        = new Vector2(TabWidth, TabHeight);
+
+            TabBaseline bl = tab.AddComponent<TabBaseline>();
+            bl.basePos = rt.anchoredPosition;
+
+            // Child 0 - outline (slightly larger than the tab, initially invisible).
+            GameObject outlineGo = new GameObject("outline");
+            outlineGo.transform.SetParent(tab.transform, false);
+            Image outline = outlineGo.AddComponent<Image>();
+            outline.sprite        = UIRoundedSprite.Default;
+            outline.type          = Image.Type.Sliced;
+            outline.color         = new Color(1f, 1f, 1f, 0f);
+            outline.raycastTarget = false;
+            RectTransform ort = outlineGo.GetComponent<RectTransform>();
+            ort.anchorMin = new Vector2(0.5f, 0.5f);
+            ort.anchorMax = new Vector2(0.5f, 0.5f);
+            ort.pivot     = new Vector2(0.5f, 0.5f);
+            ort.anchoredPosition = Vector2.zero;
+            ort.sizeDelta = new Vector2(TabWidth + TabOutlineInset * 2f, TabHeight + TabOutlineInset * 2f);
+            _tabOutlines.Add(outline);
+
+            // Child 1 - bg (the colored rounded card, fills the container).
+            GameObject bgGo = new GameObject("bg");
+            bgGo.transform.SetParent(tab.transform, false);
+            Image bg = bgGo.AddComponent<Image>();
+            bg.sprite        = UIRoundedSprite.Default;
+            bg.type          = Image.Type.Sliced;
+            bg.color         = TabColors[i];
+            bg.raycastTarget = true; // clicks / hovers land here and bubble up
+            RectTransform brt = bgGo.GetComponent<RectTransform>();
+            brt.anchorMin = Vector2.zero;
+            brt.anchorMax = Vector2.one;
+            brt.offsetMin = Vector2.zero;
+            brt.offsetMax = Vector2.zero;
+            _tabBgs.Add(bg);
+
+            int capture = i;
+            Button btn = tab.AddComponent<Button>();
+            btn.targetGraphic = bg;
+            btn.onClick.AddListener(() => SelectTab((TabID)capture));
+
+            _tabHovers.Add(tab.AddComponent<TabHoverTracker>());
+            _tabButtons.Add(tab);
+            _tabRects.Add(rt);
+
+            // Child 2 - label (left-aligned, indented so the lock icon fits).
+            TextMeshProUGUI lbl = CreateLabel(tab.transform, TabLabels[i],
+                anchor: new Vector2(0f, 0.5f), pivot: new Vector2(0f, 0.5f),
+                anchoredPos: new Vector2(32f, 0f),
+                size: new Vector2(TabWidth - 100f, TabHeight - 12f),
+                fontSize: 32f, color: Color.white, style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Left);
+            _tabLabels.Add(lbl);
+
+            // Child 3 - procedural lock for the multiplayer tab. Drawn from 4
+            // rounded rects so the default TMP font (which lacks 🔒) isn't an issue.
+            if ((TabID)i == TabID.Multiplayer)
+            {
+                GameObject lockIcon = BuildLockIcon(tab.transform, 52f, new Color(1f, 1f, 1f, 0.9f));
+                RectTransform lrt = (RectTransform)lockIcon.transform;
+                lrt.anchorMin = new Vector2(1f, 0.5f);
+                lrt.anchorMax = new Vector2(1f, 0.5f);
+                lrt.pivot     = new Vector2(1f, 0.5f);
+                lrt.anchoredPosition = new Vector2(-22f, 0f);
+            }
+        }
+    }
+
+    // ── Panels ───────────────────────────────────────────────────────────────
+
+    private void BuildAllPanels()
+    {
+        _panels.Add(BuildSingleplayerPanel());
+        _panels.Add(BuildMultiplayerPanel());
+        _panels.Add(BuildControlsPanel());
+        _panels.Add(BuildLeaderboardPanel());
+        _panels.Add(BuildAboutPanel());
+        for (int i = 0; i < _panels.Count; i++) _panels[i].SetActive(false);
+    }
+
+    /// <summary>Rounded rect anchored to the top-right, sized for the right
+    /// two-thirds of the screen (the tab column owns the left third).</summary>
+    private GameObject CreatePanelShell(string name, Color accentStripe)
+    {
+        GameObject p = new GameObject(name);
+        p.transform.SetParent(transform, false);
+        Image img = p.AddComponent<Image>();
+        img.sprite = UIRoundedSprite.Default;
+        img.type   = Image.Type.Sliced;
+        img.color  = new Color(0.05f, 0.06f, 0.10f, 0.93f);
+        img.raycastTarget = false;
+        RectTransform rt = p.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(1f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(1f, 1f);
+        rt.anchoredPosition = new Vector2(-PanelMarginR, PanelTopY);
+        rt.sizeDelta        = new Vector2(PanelWidth, PanelHeight);
+
+        // Thin accent stripe along the top edge - colored per tab.
+        GameObject stripe = new GameObject("AccentStripe");
+        stripe.transform.SetParent(p.transform, false);
+        Image sImg = stripe.AddComponent<Image>();
+        sImg.sprite = UIRoundedSprite.Default;
+        sImg.type   = Image.Type.Sliced;
+        sImg.color  = accentStripe;
+        sImg.raycastTarget = false;
+        RectTransform sRt = stripe.GetComponent<RectTransform>();
+        sRt.anchorMin = new Vector2(0f, 1f);
+        sRt.anchorMax = new Vector2(1f, 1f);
+        sRt.pivot     = new Vector2(0.5f, 1f);
+        sRt.anchoredPosition = new Vector2(0f, -10f);
+        sRt.sizeDelta        = new Vector2(-40f, 8f);
+
+        return p;
+    }
+
+    // ── Singleplayer panel ───────────────────────────────────────────────────
+
+    private GameObject BuildSingleplayerPanel()
+    {
+        GameObject p = CreatePanelShell("Panel_Singleplayer", TabColors[(int)TabID.Singleplayer]);
+
+        CreateLabel(p.transform, "READY TO STACK?",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, -70f), size: new Vector2(1150f, 90f),
+            fontSize: 64f, color: new Color(0f, 0.9f, 1f), style: FontStyles.Bold);
+
+        CreateLabel(p.transform, "CLASSIC BLOCK BATTLE - CLEAR LINES, CLIMB LEVELS, CHASE YOUR HIGH SCORE.",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, -170f), size: new Vector2(1150f, 45f),
+            fontSize: 24f, color: new Color(1f, 1f, 1f, 0.8f), style: FontStyles.Normal);
+
+        // Rotating T-piece preview - a simple 4-cell arrangement that spins.
+        GameObject spin = new GameObject("SpinT", typeof(RectTransform));
+        spin.transform.SetParent(p.transform, false);
+        RectTransform spinRt = (RectTransform)spin.transform;
+        spinRt.anchorMin = new Vector2(0.5f, 0.5f);
+        spinRt.anchorMax = new Vector2(0.5f, 0.5f);
+        spinRt.pivot     = new Vector2(0.5f, 0.5f);
+        spinRt.anchoredPosition = new Vector2(0f, -40f);
+        spinRt.sizeDelta        = new Vector2(240f, 240f);
+        _rotatingTPiece = spinRt;
+
+        // T shape, centered.
+        const float cell = 54f;
+        Vector2Int[] tShape = { new(-1, 0), new(0, 0), new(1, 0), new(0, 1) };
+        foreach (var c in tShape)
+        {
+            GameObject blk = new GameObject("TCell");
+            blk.transform.SetParent(spin.transform, false);
+            Image bImg = blk.AddComponent<Image>();
+            bImg.sprite = UIRoundedSprite.Default;
+            bImg.type   = Image.Type.Sliced;
+            bImg.color  = TabColors[(int)TabID.About]; // T-piece purple
+            bImg.raycastTarget = false;
+            RectTransform brt = blk.GetComponent<RectTransform>();
+            brt.anchorMin = new Vector2(0.5f, 0.5f);
+            brt.anchorMax = new Vector2(0.5f, 0.5f);
+            brt.pivot     = new Vector2(0.5f, 0.5f);
+            brt.sizeDelta = new Vector2(cell - 4f, cell - 4f);
+            brt.anchoredPosition = new Vector2(c.x * cell, c.y * cell);
+        }
+
+        // Big flashing PLAY prompt.
+        _playPromptText = CreateLabel(p.transform, "▶  PRESS ENTER TO PLAY  ◀",
+            anchor: new Vector2(0.5f, 0f), pivot: new Vector2(0.5f, 0f),
+            anchoredPos: new Vector2(0f, 60f), size: new Vector2(1150f, 80f),
+            fontSize: 44f, color: new Color(1f, 0.95f, 0.2f), style: FontStyles.Bold);
+
+        return p;
+    }
+
+    // ── Multiplayer panel (locked) ───────────────────────────────────────────
+
+    private GameObject BuildMultiplayerPanel()
+    {
+        GameObject p = CreatePanelShell("Panel_Multiplayer", new Color(0.4f, 0.4f, 0.45f));
+
+        // Big procedural padlock - previously a 🔒 emoji, which rendered as
+        // a tofu box on systems whose TMP atlas lacks emoji glyphs.
+        GameObject bigLock = BuildLockIcon(p.transform, 180f, new Color(0.78f, 0.78f, 0.82f, 1f));
+        RectTransform blrt = (RectTransform)bigLock.transform;
+        blrt.anchorMin = new Vector2(0.5f, 1f);
+        blrt.anchorMax = new Vector2(0.5f, 1f);
+        blrt.pivot     = new Vector2(0.5f, 1f);
+        blrt.anchoredPosition = new Vector2(0f, -90f);
+
+        CreateLabel(p.transform, "LOCKED",
+            anchor: new Vector2(0.5f, 0.5f), pivot: new Vector2(0.5f, 0.5f),
+            anchoredPos: new Vector2(0f, 30f), size: new Vector2(1150f, 100f),
+            fontSize: 88f, color: new Color(1f, 1f, 1f, 0.45f), style: FontStyles.Bold);
+
+        CreateLabel(p.transform, "MULTIPLAYER IS UNDER CONSTRUCTION",
+            anchor: new Vector2(0.5f, 0.5f), pivot: new Vector2(0.5f, 0.5f),
+            anchoredPos: new Vector2(0f, -60f), size: new Vector2(1150f, 50f),
+            fontSize: 32f, color: new Color(1f, 0.85f, 0.4f), style: FontStyles.Bold);
+
+        CreateLabel(p.transform, "Battle your friends with garbage sends, KO counters, and real-time chaos. Soon.",
+            anchor: new Vector2(0.5f, 0.5f), pivot: new Vector2(0.5f, 0.5f),
+            anchoredPos: new Vector2(0f, -115f), size: new Vector2(1150f, 40f),
+            fontSize: 22f, color: new Color(1f, 1f, 1f, 0.55f), style: FontStyles.Italic);
+
+        return p;
+    }
+
+    // ── Controls panel ───────────────────────────────────────────────────────
+
+    private GameObject BuildControlsPanel()
+    {
+        GameObject p = CreatePanelShell("Panel_Controls", TabColors[(int)TabID.Controls]);
+
+        CreateLabel(p.transform, "CONTROLS",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, -60f), size: new Vector2(1150f, 80f),
+            fontSize: 50f, color: TabColors[(int)TabID.Controls], style: FontStyles.Bold);
+
+        // Subtitle sells the context: this build targets a real arcade cabinet
+        // so only arcade bindings are surfaced. Keyboard mappings still exist
+        // in TetrixControls for dev work but there's no reason to clutter the
+        // shipped menu with them.
+        CreateLabel(p.transform, "ARCADE CABINET - STICK + BUTTONS",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, -125f), size: new Vector2(1150f, 40f),
+            fontSize: 24f, color: new Color(1f, 1f, 1f, 0.65f), style: FontStyles.Italic);
+
+        // Arcade-only bindings. Mirrors the joystick half of
+        // TetrixControls.inputactions - keep in sync if buttons get rewired.
+        // Order roughly follows frequency-of-use: movement first, then the
+        // occasional buttons, with CONFIRM last as the menu-only action.
+        // Using a tuple array instead of string[,] because C# 9 tuple syntax
+        // reads better and you can index named members (.action/.binding)
+        // rather than magic column indices.
+        (string action, string binding)[] rows =
+        {
+            ("MOVE LEFT",  "Stick LEFT"),
+            ("MOVE RIGHT", "Stick RIGHT"),
+            ("SOFT DROP",  "Stick DOWN"),
+            ("HOLD",       "Stick UP"),
+            ("ROTATE CW",  "Button 11"),
+            ("HARD DROP",  "Button 12"),
+            ("CONFIRM",    "Button A"),
+        };
+
+        // Two-column layout centered in the 1260-wide panel. The action column
+        // sits left of center, the binding column right of center, with a
+        // comfortable gutter. Row step is a little taller than the old 3-col
+        // version because we have fewer rows - lets the text breathe and
+        // keeps the section feeling deliberate instead of sparse.
+        const float actionColX = -220f;
+        const float bindColX   =  220f;
+        const float headerY    = -200f;
+        const float rowStartY  = -260f;
+        const float rowStep    =  58f;
+        const float zebraWidth = 1020f;
+
+        CreateLabel(p.transform, "ACTION",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(actionColX, headerY), size: new Vector2(400f, 40f),
+            fontSize: 26f, color: new Color(1f, 1f, 1f, 0.7f), style: FontStyles.Bold,
+            alignment: TextAlignmentOptions.Left);
+
+        CreateLabel(p.transform, "ARCADE CONTROL",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(bindColX, headerY), size: new Vector2(400f, 40f),
+            fontSize: 26f, color: TabColors[(int)TabID.Controls], style: FontStyles.Bold,
+            alignment: TextAlignmentOptions.Left);
+
+        for (int i = 0; i < rows.Length; i++)
+        {
+            float y = rowStartY - i * rowStep;
+
+            // Alternating row background - subtle zebra for readability. Pivot
+            // y=0.5 so the zebra centers on `y`, while labels (pivot y=1) sit
+            // at y + rowStep/2 so their vertical middle lines up with `y`.
+            // Same trick the leaderboard uses.
+            if (i % 2 == 0)
+            {
+                GameObject zebra = new GameObject("zebra");
+                zebra.transform.SetParent(p.transform, false);
+                Image zimg = zebra.AddComponent<Image>();
+                zimg.sprite = UIRoundedSprite.Default;
+                zimg.type   = Image.Type.Sliced;
+                zimg.color  = new Color(1f, 1f, 1f, 0.04f);
+                zimg.raycastTarget = false;
+                RectTransform zrt = zebra.GetComponent<RectTransform>();
+                zrt.anchorMin = new Vector2(0.5f, 1f);
+                zrt.anchorMax = new Vector2(0.5f, 1f);
+                zrt.pivot     = new Vector2(0.5f, 0.5f);
+                zrt.anchoredPosition = new Vector2(0f, y);
+                zrt.sizeDelta        = new Vector2(zebraWidth, rowStep - 6f);
+            }
+
+            float textY = y + rowStep * 0.5f;
+
+            CreateLabel(p.transform, rows[i].action,
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(actionColX, textY), size: new Vector2(400f, rowStep),
+                fontSize: 26f, color: Color.white, style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Left);
+
+            CreateLabel(p.transform, rows[i].binding,
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(bindColX, textY), size: new Vector2(400f, rowStep),
+                fontSize: 26f, color: new Color(1f, 0.85f, 0.5f), style: FontStyles.Normal,
+                alignment: TextAlignmentOptions.Left);
+        }
+
+        return p;
+    }
+
+    // ── Leaderboard panel ────────────────────────────────────────────────────
+
+    private readonly List<TextMeshProUGUI> _lbRank  = new();
+    private readonly List<TextMeshProUGUI> _lbName  = new();
+    private readonly List<TextMeshProUGUI> _lbScore = new();
+    private readonly List<TextMeshProUGUI> _lbLines = new();
+    private readonly List<TextMeshProUGUI> _lbLevel = new();
+
+    private GameObject BuildLeaderboardPanel()
+    {
+        GameObject p = CreatePanelShell("Panel_Leaderboard", TabColors[(int)TabID.Leaderboard]);
+
+        CreateLabel(p.transform, "LEADERBOARD - TOP 10",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, -60f), size: new Vector2(1150f, 80f),
+            fontSize: 50f, color: TabColors[(int)TabID.Leaderboard], style: FontStyles.Bold);
+
+        // Column X positions tuned for the 1260-wide panel.
+        const float rankX  = -520f;
+        const float nameX  = -320f;
+        const float scoreX =    0f;
+        const float levelX =  320f;
+        const float linesX =  490f;
+        const float headerY    = -160f;
+        const float rowStartY  = -215f;
+        const float rowStep    =  40f;
+        const float zebraWidth = 1140f;
+
+        string[] headers = { "#", "NAME", "SCORE", "LEVEL", "LINES" };
+        float[]  xs      = { rankX, nameX, scoreX, levelX, linesX };
+        for (int i = 0; i < headers.Length; i++)
+            CreateLabel(p.transform, headers[i],
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(xs[i], headerY), size: new Vector2(200f, 40f),
+                fontSize: 22f, color: new Color(1f, 1f, 1f, 0.65f), style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Center);
+
+        for (int i = 0; i < Leaderboard.MaxEntries; i++)
+        {
+            // `y` is the CENTER of the row. The zebra (pivot 0.5,0.5) is placed
+            // at y directly. Text labels (pivot 0.5,1) are placed at y + rowStep/2
+            // so their vertical CENTER lines up with y - matching the Controls
+            // panel pattern. Before this fix, text used `y` as its TOP which
+            // dropped rows a half-row below their zebra stripe.
+            float y = rowStartY - i * rowStep;
+            float textY = y + rowStep * 0.5f;
+
+            if (i % 2 == 0)
+            {
+                GameObject zebra = new GameObject("zebra");
+                zebra.transform.SetParent(p.transform, false);
+                Image zimg = zebra.AddComponent<Image>();
+                zimg.sprite = UIRoundedSprite.Default;
+                zimg.type   = Image.Type.Sliced;
+                zimg.color  = new Color(1f, 1f, 1f, 0.03f);
+                zimg.raycastTarget = false;
+                RectTransform zrt = zebra.GetComponent<RectTransform>();
+                zrt.anchorMin = new Vector2(0.5f, 1f);
+                zrt.anchorMax = new Vector2(0.5f, 1f);
+                zrt.pivot     = new Vector2(0.5f, 0.5f);
+                zrt.anchoredPosition = new Vector2(0f, y);
+                zrt.sizeDelta        = new Vector2(zebraWidth, rowStep - 4f);
+            }
+
+            _lbRank.Add(CreateLabel(p.transform, $"{i + 1}.",
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(rankX, textY), size: new Vector2(100f, rowStep),
+                fontSize: 22f, color: new Color(1f, 0.85f, 0.13f), style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Center));
+
+            _lbName.Add(CreateLabel(p.transform, "---",
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(nameX, textY), size: new Vector2(240f, rowStep),
+                fontSize: 22f, color: Color.white, style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Center));
+
+            _lbScore.Add(CreateLabel(p.transform, "---",
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(scoreX, textY), size: new Vector2(240f, rowStep),
+                fontSize: 22f, color: new Color(0.5f, 0.9f, 1f), style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Center));
+
+            _lbLevel.Add(CreateLabel(p.transform, "---",
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(levelX, textY), size: new Vector2(180f, rowStep),
+                fontSize: 22f, color: new Color(0.85f, 0.85f, 0.85f), style: FontStyles.Normal,
+                alignment: TextAlignmentOptions.Center));
+
+            _lbLines.Add(CreateLabel(p.transform, "---",
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(linesX, textY), size: new Vector2(180f, rowStep),
+                fontSize: 22f, color: new Color(0.85f, 0.85f, 0.85f), style: FontStyles.Normal,
+                alignment: TextAlignmentOptions.Center));
+        }
+
+        return p;
+    }
+
+    private void RefreshLeaderboardPanel()
+    {
+        var entries = Leaderboard.Load();
+        for (int i = 0; i < Leaderboard.MaxEntries; i++)
+        {
+            if (i < entries.Count)
+            {
+                _lbRank[i].text  = $"{i + 1}.";
+                _lbName[i].text  = entries[i].name;
+                _lbScore[i].text = entries[i].score.ToString("N0");
+                _lbLevel[i].text = entries[i].level.ToString();
+                _lbLines[i].text = entries[i].lines.ToString();
+            }
+            else
+            {
+                _lbRank[i].text  = $"{i + 1}.";
+                _lbName[i].text  = "---";
+                _lbScore[i].text = "---";
+                _lbLevel[i].text = "---";
+                _lbLines[i].text = "---";
+            }
+        }
+    }
+
+    // ── About panel ──────────────────────────────────────────────────────────
+    //
+    // ╔═══════════════════════════════════════════════════════════════════════╗
+    // ║  ABOUT PANEL - EDIT THIS BLOCK TO CUSTOMIZE                           ║
+    // ╚═══════════════════════════════════════════════════════════════════════╝
+    //
+    // The About tab has two edit surfaces:
+    //   1. The AboutFacts array below - key/value rows baked into the code.
+    //   2. The four SocialLink [SerializeField] slots - exposed in the
+    //      Inspector so PNG icons and handles can be swapped without
+    //      recompiling. Clearing a slot's Handle field hides that row.
+    // Plus the layout constants further down (spacing, column x, icon size).
+    // Drop in new facts or tweak the Inspector slots and the panel rebuilds
+    // itself - no need to touch the Build method unless you want a
+    // different visual treatment.
+
+    /// <summary>Style of the procedural fallback badge, used when a slot has
+    /// no iconSprite assigned. Instagram gets a special "lens" motif; every
+    /// other value falls through to the generic first-letter badge. Adding a
+    /// new enum value is only needed if you want brand-specific procedural
+    /// decoration - dropping a PNG in the Inspector bypasses this entirely.</summary>
+    private enum SocialIcon { Email, Instagram, Discord, YouTube, GitHub, LinkedIn, Twitter, Generic }
+
+    /// <summary>One row of the About panel's link list. Marked [Serializable]
+    /// so each instance can be exposed as its own Inspector slot - drop a
+    /// PNG into `iconSprite` to use custom artwork, or leave it blank to
+    /// render the procedural brand-colored first-letter badge. Clearing
+    /// `handle` in the Inspector hides the row entirely, which is the
+    /// supported way to turn a platform off without deleting the field.
+    /// This used to be a readonly struct backing a static array, but Unity's
+    /// serializer can't see struct fields, so it had to become a class with
+    /// public fields to make it Inspector-editable.</summary>
+    // Private + [Serializable] is the sweet spot here: Unity's Inspector still
+    // sees it via SerializeField, but it stays a MainMenu implementation
+    // detail. Making it public would force SocialIcon public too (CS0052 - a
+    // public class can't expose a private-enum field), which isn't worth it.
+    [System.Serializable]
+    private class SocialLink
+    {
+        public SocialIcon icon = SocialIcon.Generic;
+        public Sprite     iconSprite;
+        public string     label  = "";
+        public string     handle = "";
+        public Color      tint   = Color.white;
+    }
+
+    // ── Facts block ──
+    // Key / value rows. The left column is the key (right-aligned, dim), the
+    // right column is the value (left-aligned, bright). Bullet " • " renders
+    // cleanly in TMP's default atlas, unlike emoji.
+    private static readonly (string key, string value)[] AboutFacts =
+    {
+        ("GAME",     "BLOCK BATTLE"),
+        ("BUILT BY", "CAM"),
+        ("ENGINE",   "UNITY  •  C#  •  NEW INPUT SYSTEM"),
+        ("RULESET",  "SRS ROTATION  •  ONE HOLD PER PIECE"),
+        ("STATUS",   "SINGLEPLAYER SHIPPED  •  MULTIPLAYER IN DEV"),
+    };
+
+    // ── Social / external links (Inspector-driven) ──
+    // Each slot below shows up as its own collapsible block in the Inspector.
+    // To customize a row: set Label (e.g. "INSTAGRAM"), Handle (e.g.
+    // "@blockbattle" or a full URL), and either drop a PNG into Icon Sprite
+    // or pick a Tint and let the procedural first-letter badge render.
+    // Tint multiplies the sprite when one is assigned - keep it white if
+    // you've imported a full-color logo. Cleared Handle = hidden row.
+    //
+    // Note: these are instance fields (not static like AboutFacts above)
+    // because Unity's serializer only sees instance state - that's the price
+    // of getting Inspector slots. The defaults below are baked-in suggestions
+    // and only matter the first time the component is added to a scene;
+    // after that the Inspector is the source of truth.
+    [Header("About Tab - Social Links (drag PNGs into Icon Sprite to use custom art)")]
+    [SerializeField] private SocialLink _emailLink     = new() { icon = SocialIcon.Email,     label = "EMAIL",     handle = "guardedflight@gmail.com", tint = new Color(0.95f, 0.55f, 0.25f) };
+    [SerializeField] private SocialLink _instagramLink = new() { icon = SocialIcon.Instagram, label = "INSTAGRAM", handle = "@blockbattle",            tint = new Color(0.91f, 0.27f, 0.53f) };
+    [SerializeField] private SocialLink _githubLink    = new() { icon = SocialIcon.GitHub,    label = "GITHUB",    handle = "github.com/cam",          tint = new Color(0.20f, 0.20f, 0.20f) };
+    [SerializeField] private SocialLink _linkedinLink  = new() { icon = SocialIcon.LinkedIn,  label = "LINKEDIN",  handle = "linkedin.com/in/cam",     tint = new Color(0.05f, 0.42f, 0.68f) };
+
+    // ── Footer text ──
+    // The single italic line at the bottom of the About panel. Set to null
+    // or empty to hide it.
+    private const string AboutFooter = "Thanks for playing. Stack well.";
+
+    // ── Layout knobs ──
+    // Y is measured from the top of the About panel (so more negative =
+    // further down). X is measured from the panel's horizontal center.
+    // Tune these if you add enough entries to overflow, or if you want the
+    // block shifted left / right / tighter / looser.
+    private const float AboutTitleY        =  -60f;   // "ABOUT BLOCK BATTLE"
+    private const float AboutFactStartY    = -160f;   // top row of facts
+    private const float AboutFactStep      =   44f;   // vertical gap between fact rows
+    private const float AboutFactKeyX      = -350f;   // right-edge x of key column
+    private const float AboutFactValueX    =  260f;   // left-edge x of value column
+    private const float AboutLinksHeaderY  = -410f;   // "LINKS" subheading y
+    private const float AboutLinkStartY    = -460f;   // first link row y (center of row)
+    private const float AboutLinkStep      =   60f;   // vertical gap between link rows
+    private const float AboutLinkIconX     = -360f;   // x of the icon badge center
+    private const float AboutLinkLabelX    = -300f;   // left edge of "INSTAGRAM"
+    private const float AboutLinkHandleX   =  -60f;   // left edge of "@handle"
+    private const float AboutIconSize      =   48f;   // width/height of the badge
+
+    // ╔═══════════════════════════════════════════════════════════════════════╗
+    // ║  END OF CUSTOMIZATION BLOCK                                            ║
+    // ╚═══════════════════════════════════════════════════════════════════════╝
+
+    private GameObject BuildAboutPanel()
+    {
+        GameObject p = CreatePanelShell("Panel_About", TabColors[(int)TabID.About]);
+
+        CreateLabel(p.transform, "ABOUT BLOCK BATTLE",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, AboutTitleY), size: new Vector2(1150f, 80f),
+            fontSize: 50f, color: TabColors[(int)TabID.About], style: FontStyles.Bold);
+
+        // Facts section. Each AboutFacts entry becomes a right-aligned key
+        // column + left-aligned value column. Heights scale from AboutFactStep
+        // so a shorter step tightens the whole block without per-row fiddling.
+        for (int i = 0; i < AboutFacts.Length; i++)
+        {
+            float y = AboutFactStartY - i * AboutFactStep;
+
+            CreateLabel(p.transform, AboutFacts[i].key,
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(AboutFactKeyX, y),
+                size: new Vector2(320f, AboutFactStep - 6f),
+                fontSize: 22f, color: new Color(1f, 1f, 1f, 0.6f), style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Right);
+
+            CreateLabel(p.transform, AboutFacts[i].value,
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(AboutFactValueX, y),
+                size: new Vector2(820f, AboutFactStep - 6f),
+                fontSize: 22f, color: new Color(1f, 0.95f, 0.95f), style: FontStyles.Normal,
+                alignment: TextAlignmentOptions.Left);
+        }
+
+        // Links section. Walk the four Inspector slots in the order we want
+        // them drawn and skip any whose handle is blank - that way clearing
+        // a handle in the Inspector removes the row cleanly without leaving
+        // a vertical gap where an empty slot used to sit.
+        SocialLink[] slots = { _emailLink, _instagramLink, _githubLink, _linkedinLink };
+        int drawn = 0;
+        bool headerDrawn = false;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            SocialLink link = slots[i];
+            if (link == null || string.IsNullOrEmpty(link.handle)) continue;
+
+            // Header is deferred until we know at least one link will actually
+            // render, so an all-empty set doesn't leave an orphaned "LINKS"
+            // subheading floating above nothing.
+            if (!headerDrawn)
+            {
+                CreateLabel(p.transform, "LINKS",
+                    anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                    anchoredPos: new Vector2(AboutFactKeyX, AboutLinksHeaderY),
+                    size: new Vector2(320f, 36f),
+                    fontSize: 22f, color: new Color(1f, 1f, 1f, 0.45f), style: FontStyles.Bold,
+                    alignment: TextAlignmentOptions.Right);
+                headerDrawn = true;
+            }
+
+            float y = AboutLinkStartY - drawn * AboutLinkStep;
+            BuildSocialLinkRow(p.transform, link, y);
+            drawn++;
+        }
+
+        // Footer line. Gated on non-empty so setting AboutFooter = "" hides
+        // it without ever creating a zero-width label.
+        if (!string.IsNullOrEmpty(AboutFooter))
+        {
+            CreateLabel(p.transform, AboutFooter,
+                anchor: new Vector2(0.5f, 0f), pivot: new Vector2(0.5f, 0f),
+                anchoredPos: new Vector2(0f, 45f), size: new Vector2(1150f, 50f),
+                fontSize: 24f, color: new Color(1f, 1f, 1f, 0.8f), style: FontStyles.Italic,
+                alignment: TextAlignmentOptions.Center);
+        }
+
+        return p;
+    }
+
+    /// <summary>
+    /// Lays out one row: [icon badge] [LABEL] [handle]. Row y is the row's
+    /// vertical center; icon and text all share that y line. Kept as its own
+    /// method so adding a new icon style only touches BuildSocialIcon.
+    /// </summary>
+    private void BuildSocialLinkRow(Transform parent, SocialLink link, float y)
+    {
+        // Icon badge. Anchored top, pivot center so anchoredPosition y=y puts
+        // the badge's center on the row's baseline.
+        GameObject iconRoot = BuildSocialIcon(parent, link, AboutIconSize);
+        RectTransform irt = (RectTransform)iconRoot.transform;
+        irt.anchorMin = new Vector2(0.5f, 1f);
+        irt.anchorMax = new Vector2(0.5f, 1f);
+        irt.pivot     = new Vector2(0.5f, 0.5f);
+        irt.anchoredPosition = new Vector2(AboutLinkIconX, y);
+
+        // Label (e.g. "INSTAGRAM"). Pivot(0,0.5) so anchoredPos is the
+        // left-middle - easier to reason about when the row is a horizontal
+        // strip of items sharing a y baseline.
+        CreateLabel(parent, link.label,
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0f, 0.5f),
+            anchoredPos: new Vector2(AboutLinkLabelX, y), size: new Vector2(260f, AboutLinkStep - 8f),
+            fontSize: 22f, color: link.tint, style: FontStyles.Bold,
+            alignment: TextAlignmentOptions.Left);
+
+        // Handle / URL text - dimmer than the label so the eye lands on the
+        // platform name first.
+        CreateLabel(parent, link.handle,
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0f, 0.5f),
+            anchoredPos: new Vector2(AboutLinkHandleX, y), size: new Vector2(760f, AboutLinkStep - 8f),
+            fontSize: 22f, color: new Color(1f, 0.95f, 0.95f, 0.85f), style: FontStyles.Normal,
+            alignment: TextAlignmentOptions.Left);
+    }
+
+    /// <summary>
+    /// Builds the badge sitting at the start of a link row. Two rendering
+    /// modes, chosen at runtime based on what's in the slot:
+    ///   • Inspector sprite mode: if `link.iconSprite` is set we just show
+    ///     that image filling the slot with aspect preserved, tinted by
+    ///     `link.tint`. No brand badge background - the artwork is expected
+    ///     to carry itself, and a logo on a colored square usually looks
+    ///     cluttered.
+    ///   • Procedural fallback: brand-tinted rounded square + first letter
+    ///     of the label in bold white. This keeps the menu looking right
+    ///     before any PNGs get dropped in, and Instagram gets a small
+    ///     camera-lens motif as a nostalgic holdover from the no-emoji era.
+    /// </summary>
+    private GameObject BuildSocialIcon(Transform parent, SocialLink link, float size)
+    {
+        GameObject root = new GameObject("SocialIcon", typeof(RectTransform));
+        root.transform.SetParent(parent, false);
+        RectTransform rr = (RectTransform)root.transform;
+        rr.anchorMin = new Vector2(0.5f, 0.5f);
+        rr.anchorMax = new Vector2(0.5f, 0.5f);
+        rr.pivot     = new Vector2(0.5f, 0.5f);
+        rr.sizeDelta = new Vector2(size, size);
+
+        // Inspector-assigned sprite wins. preserveAspect keeps non-square
+        // artwork from getting stretched, and the tint multiplies - so a
+        // white-on-transparent monochrome icon can be tinted from the
+        // Inspector, while full-color logos should leave tint at white.
+        if (link.iconSprite != null)
+        {
+            GameObject sg = new GameObject("sprite");
+            sg.transform.SetParent(root.transform, false);
+            Image simg = sg.AddComponent<Image>();
+            simg.sprite         = link.iconSprite;
+            simg.preserveAspect = true;
+            simg.color          = link.tint;
+            simg.raycastTarget  = false;
+            RectTransform srt = sg.GetComponent<RectTransform>();
+            srt.anchorMin = Vector2.zero;
+            srt.anchorMax = Vector2.one;
+            srt.offsetMin = Vector2.zero;
+            srt.offsetMax = Vector2.zero;
+            return root;
+        }
+
+        // Procedural fallback begins here. Brand-tinted rounded badge - same
+        // UIRoundedSprite the rest of the UI uses, so rounding + 9-slice
+        // behave identically across panels.
+        GameObject bg = new GameObject("bg");
+        bg.transform.SetParent(root.transform, false);
+        Image bgImg = bg.AddComponent<Image>();
+        bgImg.sprite = UIRoundedSprite.Default;
+        bgImg.type   = Image.Type.Sliced;
+        bgImg.color  = link.tint;
+        bgImg.raycastTarget = false;
+        RectTransform brt = bg.GetComponent<RectTransform>();
+        brt.anchorMin = Vector2.zero;
+        brt.anchorMax = Vector2.one;
+        brt.offsetMin = Vector2.zero;
+        brt.offsetMax = Vector2.zero;
+
+        // Instagram gets a little extra: a white square "lens" frame with an
+        // inner punch-through made by layering a brand-colored square on top.
+        // Every other platform just shows its first letter, which is enough
+        // given the brand color does most of the recognition work.
+        if (link.icon == SocialIcon.Instagram)
+        {
+            // Outer lens square (white frame).
+            AddLockPart(root.transform, Vector2.zero,
+                new Vector2(size * 0.55f, size * 0.55f), Color.white);
+            // Inner punch-through (tint) so the frame reads as an outline.
+            AddLockPart(root.transform, Vector2.zero,
+                new Vector2(size * 0.38f, size * 0.38f), link.tint);
+            // Shutter / flash dot in the upper right corner.
+            AddLockPart(root.transform,
+                new Vector2(size * 0.28f, size * 0.28f),
+                new Vector2(size * 0.10f, size * 0.10f), Color.white);
+        }
+        else
+        {
+            // Glyph = first letter of the label. Computed at runtime so
+            // renaming a slot in the Inspector doesn't require touching
+            // anything else. ToUpperInvariant guards against lowercase input.
+            string glyph = string.IsNullOrEmpty(link.label)
+                ? "?"
+                : link.label.Substring(0, 1).ToUpperInvariant();
+
+            CreateLabel(root.transform, glyph,
+                anchor: new Vector2(0.5f, 0.5f), pivot: new Vector2(0.5f, 0.5f),
+                anchoredPos: new Vector2(0f, 2f),          // +2 nudge to optically center bold glyphs
+                size: new Vector2(size, size),
+                fontSize: size * 0.62f, color: Color.white, style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Center);
+        }
+
+        return root;
+    }
+
+    // ── Footer ───────────────────────────────────────────────────────────────
+
+    private void BuildFooter()
+    {
+        _hintText = CreateLabel(transform, "▲ ▼  CHANGE TAB     ENTER / SPACE  SELECT",
+            anchor: new Vector2(0.5f, 0f), pivot: new Vector2(0.5f, 0f),
+            anchoredPos: new Vector2(0f, 36f), size: new Vector2(1600f, 44f),
+            fontSize: 24f, color: new Color(1f, 1f, 1f, 0.7f), style: FontStyles.Bold,
+            alignment: TextAlignmentOptions.Center);
+    }
+
+    // ── Lock icon (procedural, no emoji font required) ───────────────────────
+
+    /// <summary>
+    /// Builds a procedural padlock as a child of <paramref name="parent"/>,
+    /// fitting inside a <paramref name="size"/> x <paramref name="size"/> box.
+    /// Composed of 4 rounded rects (wide body + U-shaped shackle made of two
+    /// vertical legs and a horizontal top bar) plus a small dark keyhole dot.
+    ///
+    /// Replaces the 🔒 emoji, which renders as a .notdef tofu box in TMP's
+    /// default LiberationSans atlas (no emoji glyphs). Returns the root so the
+    /// caller can re-anchor/reposition it as needed.
+    /// </summary>
+    private static GameObject BuildLockIcon(Transform parent, float size, Color color)
+    {
+        GameObject root = new GameObject("LockIcon", typeof(RectTransform));
+        root.transform.SetParent(parent, false);
+        RectTransform rr = (RectTransform)root.transform;
+        rr.anchorMin = new Vector2(0.5f, 0.5f);
+        rr.anchorMax = new Vector2(0.5f, 0.5f);
+        rr.pivot     = new Vector2(0.5f, 0.5f);
+        rr.sizeDelta = new Vector2(size, size);
+
+        // Body - the wide square that holds the keyhole.
+        float bodyW = size * 0.78f;
+        float bodyH = size * 0.55f;
+        float bodyY = -size * 0.16f;
+        AddLockPart(root.transform, new Vector2(0f, bodyY), new Vector2(bodyW, bodyH), color);
+
+        // Shackle - two vertical legs and a horizontal top bar. Centers are
+        // computed from the U's bottom (shBaseY) so the legs meet the bar.
+        float shThickness = size * 0.13f;
+        float shHeight    = size * 0.40f;
+        float shWidth     = size * 0.56f;
+        float shBaseY     = size * 0.18f;
+        float shLegCenter = shBaseY + shHeight * 0.5f - shThickness * 0.5f;
+        AddLockPart(root.transform,
+            new Vector2(-shWidth * 0.5f + shThickness * 0.5f, shLegCenter),
+            new Vector2(shThickness, shHeight), color);
+        AddLockPart(root.transform,
+            new Vector2( shWidth * 0.5f - shThickness * 0.5f, shLegCenter),
+            new Vector2(shThickness, shHeight), color);
+        AddLockPart(root.transform,
+            new Vector2(0f, shBaseY + shHeight - shThickness * 0.5f),
+            new Vector2(shWidth, shThickness), color);
+
+        // Keyhole - a small dark dot on the body. Darker alpha so it reads as
+        // an actual hole rather than just "another piece of padlock".
+        AddLockPart(root.transform,
+            new Vector2(0f, bodyY + bodyH * 0.05f),
+            new Vector2(size * 0.15f, size * 0.15f),
+            new Color(0f, 0f, 0f, 0.55f));
+
+        return root;
+    }
+
+    private static void AddLockPart(Transform parent, Vector2 pos, Vector2 sz, Color color)
+    {
+        GameObject go = new GameObject("part");
+        go.transform.SetParent(parent, false);
+        Image img = go.AddComponent<Image>();
+        img.sprite        = UIRoundedSprite.Default;
+        img.type          = Image.Type.Sliced;
+        img.color         = color;
+        img.raycastTarget = false;
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot     = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = pos;
+        rt.sizeDelta        = sz;
+    }
+
+    // ── Sprite helpers ───────────────────────────────────────────────────────
+
+    private static Sprite BuildGradientSprite()
+    {
+        // 1x256 vertical gradient: dark navy → deep purple.
+        var tex = new Texture2D(1, 256, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode   = TextureWrapMode.Clamp,
+            hideFlags  = HideFlags.HideAndDontSave
+        };
+        Color top    = new(0.015f, 0.02f, 0.06f, 1f);
+        Color bottom = new(0.12f,  0.05f, 0.22f, 1f);
+        Color32[] px = new Color32[256];
+        for (int i = 0; i < 256; i++)
+        {
+            float t = i / 255f;
+            px[i] = Color.Lerp(bottom, top, t);
+        }
+        tex.SetPixels32(px);
+        tex.Apply(false, true);
+        return Sprite.Create(tex, new Rect(0, 0, 1, 256), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    private static Sprite _gridSpriteCached;
+    private static Sprite BuildGridSprite()
+    {
+        if (_gridSpriteCached != null) return _gridSpriteCached;
+        const int size = 64;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Bilinear,
+            wrapMode   = TextureWrapMode.Repeat,
+            hideFlags  = HideFlags.HideAndDontSave
+        };
+        Color32 off = new(0, 0, 0, 0);
+        Color32 on  = new(255, 255, 255, 255);
+        Color32[] px = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+                px[y * size + x] = (x == 0 || y == 0) ? on : off;
+        tex.SetPixels32(px);
+        tex.Apply(false, true);
+        _gridSpriteCached = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        return _gridSpriteCached;
+    }
+
+    // ── Misc helpers ─────────────────────────────────────────────────────────
+
+    private static void StretchFull(RectTransform rt)
+    {
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+    }
+
+    /// <summary>
+    /// TextMeshPro label helper - same shape as GameOverScreen's but with
+    /// configurable anchor/pivot so we can pin to corners instead of center.
+    /// </summary>
+    private TextMeshProUGUI CreateLabel(Transform parent, string text,
+        Vector2 anchor, Vector2 pivot, Vector2 anchoredPos, Vector2 size,
+        float fontSize, Color color, FontStyles style,
+        TextAlignmentOptions alignment = TextAlignmentOptions.Center)
+    {
+        string objName = text.Length > 16 ? text.Substring(0, 16) : text;
+        if (string.IsNullOrEmpty(objName)) objName = "Label";
+
+        GameObject obj = new GameObject(objName);
+        obj.transform.SetParent(parent, false);
+
+        RectTransform rect = obj.AddComponent<RectTransform>();
+        rect.anchorMin = anchor;
+        rect.anchorMax = anchor;
+        rect.pivot     = pivot;
+        rect.anchoredPosition = anchoredPos;
+        rect.sizeDelta        = size;
+
+        TextMeshProUGUI tmp = obj.AddComponent<TextMeshProUGUI>();
+        tmp.text          = text;
+        tmp.fontSize      = fontSize;
+        tmp.color         = color;
+        tmp.fontStyle     = style;
+        tmp.alignment     = alignment;
+        tmp.raycastTarget = false;
+        tmp.enableWordWrapping = false;
+
+        return tmp;
+    }
+}

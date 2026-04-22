@@ -25,25 +25,41 @@ public static class TetrixInputManager
         [GameInputAction.ROTATE_CCW] = c => c.PlayerActions.RotateCCW,
         [GameInputAction.HOLD] = c => c.PlayerActions.Hold,
         [GameInputAction.PAUSE] = c => c.PlayerActions.Pause,
-        [GameInputAction.SAVE_SCENE] = c => c.PlayerActions.SaveScene
+        [GameInputAction.SAVE_SCENE] = c => c.PlayerActions.SaveScene,
+
+        // UI / arcade-entry directional actions.
+        [GameInputAction.UP]    = c => c.PlayerActions.UP,
+        [GameInputAction.DOWN]  = c => c.PlayerActions.DOWN,
+        [GameInputAction.LEFT]  = c => c.PlayerActions.LEFT,
+        [GameInputAction.RIGHT] = c => c.PlayerActions.RIGHT,
+        [GameInputAction.ENTER] = c => c.PlayerActions.Enter
     };
 
     public static void RegisterPlayer(int playerID, PlayerInput input)
     {
-        if (_playerControlsMap.ContainsKey(playerID)) return; // Already registered check
+        // IMPORTANT: this class is static, so _playerControlsMap / _playerGrids
+        // survive a scene reload even though every GameObject they reference
+        // does not. Before this change, "already registered" silently no-op'd,
+        // leaving _playerGrids[playerID] pointing at the destroyed old scene's
+        // Grid / PieceController / ScoreTracker. The reloaded scene then had
+        // no piece spawning because InitializeGrid never ran - which is
+        // exactly the "restart doesn't do anything" bug. Force a full
+        // unregister + rebuild instead.
+        if (_playerControlsMap.ContainsKey(playerID))
+            UnregisterPlayer(playerID);
 
-        // Create a new TetrixControls instance for the player and enable it
         var controls = new TetrixControls();
         controls.devices = input.devices.ToArray();
         controls.Enable();
 
-        // Create Grid for player
+        // Create Grid for player. Must happen AFTER the stale entries were
+        // dropped above - otherwise a second InitializeGrid call would race
+        // with whatever the previous scene left behind.
         InitializeGrids grid_manager = GameObject.FindFirstObjectByType<InitializeGrids>();
         Dictionary<String,GameObject> newDict = grid_manager.InitializeGrid(playerID);
 
-        _playerGrids[playerID] = newDict; // Store the grid object for the player
+        _playerGrids[playerID] = newDict;
         _playerControlsMap[playerID] = controls;
-        //_playerParents[playerID] = 
     }
 
     public static void UnregisterPlayer(int playerID)
@@ -53,6 +69,11 @@ public static class TetrixInputManager
             controls.Disable();
             _playerControlsMap.Remove(playerID);
         }
+        // Drop every other per-player cache too. These used to leak across
+        // scene reloads because they weren't touched here - the restart bug
+        // traced back to stale GameObject refs sitting in _playerGrids.
+        _playerGrids.Remove(playerID);
+        _playerParents.Remove(playerID);
     }
 
     public static bool WasPressed(GameInputAction action, int playerID)

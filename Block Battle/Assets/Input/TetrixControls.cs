@@ -171,6 +171,51 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Enter"",
+                    ""type"": ""Button"",
+                    ""id"": ""27b4c296-8121-45e9-b5d3-3b9658eae4e1"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""UP"",
+                    ""type"": ""Button"",
+                    ""id"": ""599611f7-353d-45db-a0e6-9fdd434f1bc9"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""DOWN"",
+                    ""type"": ""Button"",
+                    ""id"": ""48746cc5-788c-408c-b544-150e43fceb7a"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""LEFT"",
+                    ""type"": ""Button"",
+                    ""id"": ""bbabc394-a46e-4379-89e9-4216938a32fa"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""RIGHT"",
+                    ""type"": ""Button"",
+                    ""id"": ""cfa5aa96-5637-45ec-98e1-06d3cd9edbb2"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -338,6 +383,116 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                     ""action"": ""SaveScene"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""c6d26e1f-d7ad-41d6-8397-d18933fb0f2f"",
+                    ""path"": ""<Keyboard>/enter"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Enter"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""d32da380-3ed3-4bba-ad70-5e82b3f5d8c7"",
+                    ""path"": ""<Gamepad>/buttonSouth"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Enter"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""e1fc21dd-ffe8-448d-9b76-ad00c18863bf"",
+                    ""path"": ""<Joystick>/stick/up"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""UP"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""5ad8fb64-e792-42ca-8ef6-bdf589454bd6"",
+                    ""path"": ""<Keyboard>/w"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""UP"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""f2db73fb-18f5-4a05-a278-f56e24640c87"",
+                    ""path"": ""<Joystick>/stick/down"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""DOWN"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""10b628ea-4901-4c2a-8e7d-f01bbabe9af5"",
+                    ""path"": ""<Keyboard>/s"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""DOWN"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""735dc303-dfaf-4eb1-bc00-800e1881694f"",
+                    ""path"": ""<Joystick>/stick/left"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""LEFT"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""2465e417-e504-4b06-b166-6706c1ff8d36"",
+                    ""path"": ""<Keyboard>/a"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""LEFT"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""662b38a4-82b4-4aee-8002-8004d03e84a6"",
+                    ""path"": ""<Joystick>/stick/right"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""RIGHT"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b5f64402-86fa-45e4-a666-101b08db67b8"",
+                    ""path"": ""<Keyboard>/d"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""RIGHT"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -355,6 +510,11 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         m_PlayerActions_Hold = m_PlayerActions.FindAction("Hold", throwIfNotFound: true);
         m_PlayerActions_Pause = m_PlayerActions.FindAction("Pause", throwIfNotFound: true);
         m_PlayerActions_SaveScene = m_PlayerActions.FindAction("SaveScene", throwIfNotFound: true);
+        m_PlayerActions_Enter = m_PlayerActions.FindAction("Enter", throwIfNotFound: true);
+        m_PlayerActions_UP = m_PlayerActions.FindAction("UP", throwIfNotFound: true);
+        m_PlayerActions_DOWN = m_PlayerActions.FindAction("DOWN", throwIfNotFound: true);
+        m_PlayerActions_LEFT = m_PlayerActions.FindAction("LEFT", throwIfNotFound: true);
+        m_PlayerActions_RIGHT = m_PlayerActions.FindAction("RIGHT", throwIfNotFound: true);
     }
 
     ~@TetrixControls()
@@ -444,6 +604,11 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_PlayerActions_Hold;
     private readonly InputAction m_PlayerActions_Pause;
     private readonly InputAction m_PlayerActions_SaveScene;
+    private readonly InputAction m_PlayerActions_Enter;
+    private readonly InputAction m_PlayerActions_UP;
+    private readonly InputAction m_PlayerActions_DOWN;
+    private readonly InputAction m_PlayerActions_LEFT;
+    private readonly InputAction m_PlayerActions_RIGHT;
     /// <summary>
     /// Provides access to input actions defined in input action map "PlayerActions".
     /// </summary>
@@ -491,6 +656,26 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "PlayerActions/SaveScene".
         /// </summary>
         public InputAction @SaveScene => m_Wrapper.m_PlayerActions_SaveScene;
+        /// <summary>
+        /// Provides access to the underlying input action "PlayerActions/Enter".
+        /// </summary>
+        public InputAction @Enter => m_Wrapper.m_PlayerActions_Enter;
+        /// <summary>
+        /// Provides access to the underlying input action "PlayerActions/UP".
+        /// </summary>
+        public InputAction @UP => m_Wrapper.m_PlayerActions_UP;
+        /// <summary>
+        /// Provides access to the underlying input action "PlayerActions/DOWN".
+        /// </summary>
+        public InputAction @DOWN => m_Wrapper.m_PlayerActions_DOWN;
+        /// <summary>
+        /// Provides access to the underlying input action "PlayerActions/LEFT".
+        /// </summary>
+        public InputAction @LEFT => m_Wrapper.m_PlayerActions_LEFT;
+        /// <summary>
+        /// Provides access to the underlying input action "PlayerActions/RIGHT".
+        /// </summary>
+        public InputAction @RIGHT => m_Wrapper.m_PlayerActions_RIGHT;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -544,6 +729,21 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
             @SaveScene.started += instance.OnSaveScene;
             @SaveScene.performed += instance.OnSaveScene;
             @SaveScene.canceled += instance.OnSaveScene;
+            @Enter.started += instance.OnEnter;
+            @Enter.performed += instance.OnEnter;
+            @Enter.canceled += instance.OnEnter;
+            @UP.started += instance.OnUP;
+            @UP.performed += instance.OnUP;
+            @UP.canceled += instance.OnUP;
+            @DOWN.started += instance.OnDOWN;
+            @DOWN.performed += instance.OnDOWN;
+            @DOWN.canceled += instance.OnDOWN;
+            @LEFT.started += instance.OnLEFT;
+            @LEFT.performed += instance.OnLEFT;
+            @LEFT.canceled += instance.OnLEFT;
+            @RIGHT.started += instance.OnRIGHT;
+            @RIGHT.performed += instance.OnRIGHT;
+            @RIGHT.canceled += instance.OnRIGHT;
         }
 
         /// <summary>
@@ -582,6 +782,21 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
             @SaveScene.started -= instance.OnSaveScene;
             @SaveScene.performed -= instance.OnSaveScene;
             @SaveScene.canceled -= instance.OnSaveScene;
+            @Enter.started -= instance.OnEnter;
+            @Enter.performed -= instance.OnEnter;
+            @Enter.canceled -= instance.OnEnter;
+            @UP.started -= instance.OnUP;
+            @UP.performed -= instance.OnUP;
+            @UP.canceled -= instance.OnUP;
+            @DOWN.started -= instance.OnDOWN;
+            @DOWN.performed -= instance.OnDOWN;
+            @DOWN.canceled -= instance.OnDOWN;
+            @LEFT.started -= instance.OnLEFT;
+            @LEFT.performed -= instance.OnLEFT;
+            @LEFT.canceled -= instance.OnLEFT;
+            @RIGHT.started -= instance.OnRIGHT;
+            @RIGHT.performed -= instance.OnRIGHT;
+            @RIGHT.canceled -= instance.OnRIGHT;
         }
 
         /// <summary>
@@ -685,5 +900,40 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnSaveScene(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Enter" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnEnter(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "UP" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnUP(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "DOWN" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnDOWN(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "LEFT" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnLEFT(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "RIGHT" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnRIGHT(InputAction.CallbackContext context);
     }
 }

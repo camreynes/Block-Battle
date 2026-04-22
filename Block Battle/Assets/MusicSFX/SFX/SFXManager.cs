@@ -24,7 +24,17 @@ public class SFXManager : MonoBehaviour
     [SerializeField] private AudioClip _sfxSoftDrop;
     [SerializeField] private AudioClip _sfxHardDrop;
 
+    [Header("Menu SFX")]
+    [SerializeField] private AudioClip _sfxTabChange;
+
+    [Header("Music")]
+    // Looping intro/menu track. Lives on its own AudioSource (added at runtime)
+    // so PlayOneShot SFX can layer on top without cutting the music off.
+    [SerializeField] private AudioClip _introMusic;
+    [SerializeField, Range(0f, 1f)] private float _introMusicVolume = 0.6f;
+
     private AudioSource _audioSource;
+    private AudioSource _musicSource;
 
     private void Awake()
     {
@@ -36,20 +46,47 @@ public class SFXManager : MonoBehaviour
         Instance = this;
         _audioSource = GetComponent<AudioSource>();
         _audioSource.playOnAwake = false;
+
+        // Dedicated music source - we need loop + steady volume while the SFX
+        // source stays free to fire one-shots. Adding it programmatically keeps
+        // the Inspector setup unchanged for anyone who already placed SFXManager.
+        _musicSource = gameObject.AddComponent<AudioSource>();
+        _musicSource.playOnAwake = false;
+        _musicSource.loop = true;
+        _musicSource.volume = _introMusicVolume;
     }
 
     // -----------------------PUBLIC PLAY METHODS-----------------------
 
-    public void PlayMove()     => PlayClip(_sfxMove);
-    public void PlayRotate()   => PlayClip(_sfxRotate);
-    public void PlayHold()     => PlayClip(_sfxHold);
-    public void PlaySoftDrop() => PlayClip(_sfxSoftDrop);
-    public void PlayHardDrop() => PlayClip(_sfxHardDrop);
-    public void PlaySingle()   => PlayClip(_sfxSingle);
-    public void PlayDouble()   => PlayClip(_sfxDouble);
-    public void PlayTriple()   => PlayClip(_sfxTriple);
-    public void PlayTetris()   => PlayClip(_sfxTetris);
-    public void PlaySpecial()  => PlayClip(_sfxSpecial);
+    public void PlayMove()      => PlayClip(_sfxMove);
+    public void PlayRotate()    => PlayClip(_sfxRotate);
+    public void PlayHold()      => PlayClip(_sfxHold);
+    public void PlaySoftDrop()  => PlayClip(_sfxSoftDrop);
+    public void PlayHardDrop()  => PlayClip(_sfxHardDrop);
+    public void PlaySingle()    => PlayClip(_sfxSingle);
+    public void PlayDouble()    => PlayClip(_sfxDouble);
+    public void PlayTriple()    => PlayClip(_sfxTriple);
+    public void PlayTetris()    => PlayClip(_sfxTetris);
+    public void PlaySpecial()   => PlayClip(_sfxSpecial);
+    public void PlayTabChange() => PlayClip(_sfxTabChange);
+
+    /// <summary>
+    /// Starts the menu/intro track on the dedicated music source. No-op if the
+    /// clip slot is empty (so the menu can call this unconditionally even
+    /// before Cam has dropped an audio file into the Inspector).
+    /// </summary>
+    public void PlayIntroMusic()
+    {
+        if (_introMusic == null) return;
+        // Only (re)start if we're not already playing this exact clip - avoids
+        // restarting the song if the scene calls PlayIntroMusic twice.
+        if (_musicSource.isPlaying && _musicSource.clip == _introMusic) return;
+        _musicSource.clip = _introMusic;
+        _musicSource.volume = _introMusicVolume;
+        _musicSource.Play();
+    }
+
+    public void StopIntroMusic() => _musicSource.Stop();
 
     /// <summary>
     /// Plays the appropriate line-clear SFX based on the clearType string
@@ -88,7 +125,7 @@ public class SFXManager : MonoBehaviour
     {
         if (clip == null)
         {
-            Debug.LogWarning("SFXManager: AudioClip is null — check Inspector assignments.");
+            Debug.LogWarning("SFXManager: AudioClip is null - check Inspector assignments.");
             return;
         }
         // PlayOneShot allows multiple SFX to overlap (e.g. hard-drop + line clear)

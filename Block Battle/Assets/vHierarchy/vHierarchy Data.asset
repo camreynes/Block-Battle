@@ -30,4 +30,6 @@ MonoBehaviour:
           isIconRecursive: 0
           isColorRecursive: 1
   bookmarks: []
-  bookmarkedScenePaths: []
+  bookmarkedScenePaths:
+  - Assets/Scenes/MainMenu.unity
+  - Assets/Scenes/Singleplayer.unity
