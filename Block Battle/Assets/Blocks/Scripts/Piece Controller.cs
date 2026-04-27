@@ -94,6 +94,25 @@ public class PieceController : MonoBehaviour
     {
         if (_gameOver) return;
 
+        // ── Pause gate ───────────────────────────────────────────────────────────
+        // Time.timeScale = 0 (set by PauseMenu) freezes coroutines because their
+        // timers use Time.deltaTime, but MonoBehaviour.Update() runs unaffected.
+        // Without this gate, the player can still move/rotate/hard-drop the piece
+        // through the pause overlay.
+        //
+        // We also stop any DAS hold state so a direction that was held when the
+        // player paused doesn't make the piece drift the moment they resume.
+        // After unpause the player has to re-press; that mirrors how every
+        // mainline Tetris does it and avoids surprise movement on resume.
+        if (PauseMenu.Instance != null && PauseMenu.Instance.IsPaused)
+        {
+            _holdLeft.StopHold();
+            _holdRight.StopHold();
+            _holdDown.StopHold();
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────────────────
+
         // ── Key-release events must be processed even when no piece is active ──
         // BUG FIX: previously the early-return on _currentPiece == null would swallow
         // WasReleasedThisFrame() calls, leaving HoldState stuck in IsHolding=true.

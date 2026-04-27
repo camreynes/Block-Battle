@@ -40,6 +40,9 @@ using TMPro;
 ///   ENTER / SPACE                   → activate current tab
 ///   ESC                             → quit application
 ///   Click / Hover                   → select tab / show outline
+/// 
+///     This was made with claude, among a small percent of other files, due to a time crunch
+///     after some changes, it is astounding how good claude is
 /// </summary>
 public class MainMenu : MonoBehaviour
 {
@@ -565,7 +568,7 @@ public class MainMenu : MonoBehaviour
             fontSize: 110f, color: new Color(0f, 0.85f, 1f), style: FontStyles.Bold,
             alignment: TextAlignmentOptions.Center);
 
-        CreateLabel(transform, "- SINGLEPLAYER TETRIS, CAM'S EDITION -",
+        CreateLabel(transform, "by Cameron Reynes",
             anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
             anchoredPos: new Vector2(0f, -180f), size: new Vector2(1700f, 40f),
             fontSize: 26f, color: new Color(1f, 1f, 1f, 0.65f), style: FontStyles.Italic,

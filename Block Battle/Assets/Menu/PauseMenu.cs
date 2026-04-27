@@ -42,6 +42,14 @@ public class PauseMenu : MonoBehaviour
 {
     public static PauseMenu Instance { get; private set; }
 
+    /// <summary>
+    /// True while the pause overlay is open. Gameplay scripts (e.g. PieceController)
+    /// read this to suspend input handling — Time.timeScale=0 freezes coroutines
+    /// that use Time.deltaTime, but MonoBehaviour.Update() keeps firing every frame
+    /// regardless of timeScale, so input-driven systems have to gate themselves.
+    /// </summary>
+    public bool IsPaused => _isPaused;
+
     // ── Bootstrapping ─────────────────────────────────────────────────────────
 
     // Spawn one instance once the game starts. We don't need a per-scene
