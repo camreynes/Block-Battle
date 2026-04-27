@@ -143,13 +143,13 @@ public class PieceController : MonoBehaviour
         {
             bool moved = _currentPiece.TryMovePiece(LEFT);
             _recentlyMovedByPlayer = moved;
-            if (moved) SFXManager.Instance?.PlayMove();
+            if (moved) GameplaySFXManager.Instance?.PlayMove();
         }
         else if (rightHeld && !leftHeld && _holdRight.ShouldRepeat())
         {
             bool moved = _currentPiece.TryMovePiece(RIGHT);
             _recentlyMovedByPlayer = moved;
-            if (moved) SFXManager.Instance?.PlayMove();
+            if (moved) GameplaySFXManager.Instance?.PlayMove();
         }
         if (downHeld && _holdDown.ShouldRepeat())
         {
@@ -169,12 +169,12 @@ public class PieceController : MonoBehaviour
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CW, _playerID))
         {
             _recentlyRotatedByPlayer = _currentPiece.TryRotateCW();
-            if (_recentlyRotatedByPlayer) SFXManager.Instance?.PlayRotate();
+            if (_recentlyRotatedByPlayer) GameplaySFXManager.Instance?.PlayRotate();
         }
         if (TetrixInputManager.WasPressed(GameInputAction.ROTATE_CCW, _playerID))
         {
             _recentlyRotatedByPlayer = _currentPiece.TryRotateCCW();
-            if (_recentlyRotatedByPlayer) SFXManager.Instance?.PlayRotate();
+            if (_recentlyRotatedByPlayer) GameplaySFXManager.Instance?.PlayRotate();
         }
 
         // ── Hold ──────────────────────────────────────────────────────────────────
@@ -272,7 +272,7 @@ public class PieceController : MonoBehaviour
         int rowsDropped = startY - endY;
         if (rowsDropped > 0) _grid.AddDropPoints(rowsDropped * 2);
 
-        SFXManager.Instance?.PlayHardDrop();
+        GameplaySFXManager.Instance?.PlayHardDrop();
         // NOTE: piece locking is handled by BlockFall/LockDelay via _forceHardDrop
     }
 
@@ -280,7 +280,7 @@ public class PieceController : MonoBehaviour
     {
         if (_recentlyHeld || _currentPiece == null) return;
         _recentlyHeld = true;
-        SFXManager.Instance?.PlayHold();
+        GameplaySFXManager.Instance?.PlayHold();
         _spawnHeld = _hold.UpdateHold((int)_currentPiece.GetPieceType());
         Destroy(_currentPiece.gameObject);
         _currentPiece = null;
@@ -295,7 +295,7 @@ public class PieceController : MonoBehaviour
         else if (direction.y < 0)
         {
             _holdDown.StartHold();
-            SFXManager.Instance?.PlaySoftDrop();
+            GameplaySFXManager.Instance?.PlaySoftDrop();
         }
         _recentlyMovedByPlayer = true;
     }
@@ -354,6 +354,13 @@ public class PieceController : MonoBehaviour
             if (_fallRoutine != null) StopCoroutine(_fallRoutine);
             Destroy(_currentPiece.gameObject);
             _currentPiece = null;
+
+            // Fold this run's records into the lifetime PlayerStats. Has to
+            // happen BEFORE ShowGameOver — the game-over screen is what the
+            // player will press a key on to restart, and a stale "current run"
+            // would otherwise carry over.
+            PlayerStats.EndRun(_grid.GetTotalScore(), _grid.GetLevel(), _grid.GetPeakStreak());
+
             GameOverScreen.ShowGameOver(_grid.GetTotalScore(), _grid.GetLevel(), _grid.GetLinesCleared());
             return;
         }

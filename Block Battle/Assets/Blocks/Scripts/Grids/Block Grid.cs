@@ -20,10 +20,16 @@ public class BlockGrid : MonoBehaviour
     private int _spaceUsed = 0; // Tracks the top most block being used
     private int[] _blockCount = new int[20]; // Tracks the number of blocks in each row
     private int _scoreStreak = 0;
+    private int _peakStreak  = 0;          // highest streak seen this run — folded into PlayerStats at game-over
     private int _totalScore = 0;
     private int _linesCleared = 0;
     private int _level = 1;
     private bool _backToBack = false;      // true when last eligible clear was Tetris or T-Spin
+
+    // Bonus added on top of the regular line-clear scoring whenever the
+    // board ends a clear completely empty. Multiplied by level like every
+    // other guideline-style bonus.
+    private const int PerfectClearBonus = 3500;
     private ScoreTracker _scoreTracker;
 
     private Vector2 _position; //represents bottom left position of the grid
@@ -184,11 +190,14 @@ public class BlockGrid : MonoBehaviour
     public void IncrementScore()
     {
         _scoreStreak++;
+        if (_scoreStreak > _peakStreak) _peakStreak = _scoreStreak;
     }
 
     public int GetTotalScore()   => _totalScore;
     public int GetLevel()        => _level;
     public int GetLinesCleared() => _linesCleared;
+    /// <summary>Peak combo streak during this run — used by GameOverScreen / PlayerStats.</summary>
+    public int GetPeakStreak()   => _peakStreak;
 
     /// <summary>
     /// Adds soft-drop (1 pt/row) or hard-drop (2 pt/row) bonus to the total score.
@@ -294,13 +303,54 @@ public class BlockGrid : MonoBehaviour
         // --- Combo bonus: 50 × (streak - 1) × level (0 on the very first consecutive clear) ---
         int comboBonus = (_scoreStreak > 1) ? 50 * (_scoreStreak - 1) * _level : 0;
 
-        int earned = linesClearPoints + comboBonus;
+        // --- Perfect clear: every cell empty after this clear lands a fat bonus ---
+        // Detection happens AFTER ClearRows has already wiped the rows but
+        // BEFORE the post-clear shifts run, so an empty grid here means the
+        // clear emptied the board. Bonus is level-scaled like the rest of
+        // guideline scoring.
+        bool perfect = IsBoardEmptyAfterClear();
+        int perfectBonus = 0;
+        if (perfect)
+        {
+            perfectBonus = PerfectClearBonus * _level;
+            clearType    = "PERFECT " + clearType;
+        }
+
+        int earned = linesClearPoints + comboBonus + perfectBonus;
         _totalScore += earned;
 
-        Debug.Log($"[Lvl {_level}] {clearType} | +{earned} (base:{linesClearPoints} combo:{comboBonus}) | Total:{_totalScore} | Streak:{_scoreStreak}");
+        Debug.Log($"[Lvl {_level}] {clearType} | +{earned} (base:{linesClearPoints} combo:{comboBonus} perfect:{perfectBonus}) | Total:{_totalScore} | Streak:{_scoreStreak}");
+
+        // --- Lifetime stats hook ---
+        // Strip the PERFECT marker before recording so RecordClear's switch
+        // matches the canonical clear-type names. The perfect counter is its
+        // own dedicated bump.
+        string statClearType = perfect ? clearType.Substring("PERFECT ".Length) : clearType;
+        PlayerStats.RecordClear(statClearType);
+        if (perfect) PlayerStats.RecordPerfectClear();
 
         _scoreTracker?.UpdateScore(_totalScore, clearType, _scoreStreak, _level, _linesCleared);
-        SFXManager.Instance?.PlayClearType(clearType);
+        GameplaySFXManager.Instance?.PlayClearType(clearType);
+    }
+
+    /// <summary>
+    /// True iff every row's block count is zero. Called right after ClearRows
+    /// has wiped the cleared rows (and reset their _blockCount entries to 0)
+    /// but before ShiftRows runs — at that moment, all-zero counts mean
+    /// nothing was left stacked above the cleared rows either, which is the
+    /// perfect-clear condition.
+    ///
+    /// Using _blockCount instead of scanning _blocksInGrid avoids a subtle
+    /// timing trap: Destroy() is queued to end-of-frame, so the GameObject
+    /// references in _blocksInGrid may still be valid (or not) when we ask.
+    /// _blockCount, on the other hand, is updated synchronously by ClearRows,
+    /// so this check is reliable.
+    /// </summary>
+    private bool IsBoardEmptyAfterClear()
+    {
+        for (int y = 0; y < _maxHeight; y++)
+            if (_blockCount[y] != 0) return false;
+        return true;
     }
 
     // helper method for detecting t-spins

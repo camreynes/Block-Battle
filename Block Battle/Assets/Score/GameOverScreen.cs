@@ -61,6 +61,13 @@ public class GameOverScreen : MonoBehaviour
     private const float HeldInitialDelay = 0.35f;
     private const float HeldRepeatRate   = 0.08f;
 
+    // ── Dim overlays (full-screen blackout layers behind the panels) ──
+    // Stored so HideAll() can hide them on Restart — otherwise the dim layers
+    // (created as direct children of the canvas) survive DontDestroyOnLoad
+    // and continue to cover the freshly reloaded scene.
+    private GameObject _dimBackground;
+    private GameObject _dimTint;
+
     // ── State ──
     private bool _isActive      = false;
     private int  _pendingScore, _pendingLevel, _pendingLines;
@@ -136,6 +143,11 @@ public class GameOverScreen : MonoBehaviour
         _levelText.text = $"LEVEL   {level}";
         _linesText.text = $"LINES   {linesCleared}";
 
+        // Re-show the dim overlays in case Restart() (or HideAll()) had hidden
+        // them. Show() is also called the first time, when they're already active.
+        if (_dimBackground != null) _dimBackground.SetActive(true);
+        if (_dimTint       != null) _dimTint.SetActive(true);
+
         _statsPanel.SetActive(true);
 
         if (Leaderboard.Qualifies(score))
@@ -167,6 +179,13 @@ public class GameOverScreen : MonoBehaviour
         _statsPanel.SetActive(false);
         _leaderboardPanel.SetActive(false);
         _arcadeEntryPanel.SetActive(false);
+
+        // The two dim overlays are direct children of the canvas, not of any
+        // panel. We need to hide them explicitly; otherwise they persist after
+        // a scene reload (this script lives across scene loads via
+        // DontDestroyOnLoad) and the player sees a black screen.
+        if (_dimBackground != null) _dimBackground.SetActive(false);
+        if (_dimTint       != null) _dimTint.SetActive(false);
     }
 
     private void Restart()
@@ -393,15 +412,15 @@ public class GameOverScreen : MonoBehaviour
 
         // Much darker overlay than before — near-opaque to fully blot out the
         // gameplay grid behind. Two stacked layers for a subtle navy tint.
-        BuildFullScreenDim("DimBackground", new Color(0f, 0f, 0f, 0.97f));
-        BuildFullScreenDim("DimTint",       new Color(0.02f, 0.01f, 0.06f, 0.6f));
+        _dimBackground = BuildFullScreenDim("DimBackground", new Color(0f, 0f, 0f, 0.97f));
+        _dimTint       = BuildFullScreenDim("DimTint",       new Color(0.02f, 0.01f, 0.06f, 0.6f));
 
         BuildStatsPanel();
         BuildLeaderboardPanel();
         BuildArcadeEntryPanel();
     }
 
-    private void BuildFullScreenDim(string name, Color color)
+    private GameObject BuildFullScreenDim(string name, Color color)
     {
         GameObject dim = new GameObject(name);
         dim.transform.SetParent(transform, false);
@@ -413,6 +432,7 @@ public class GameOverScreen : MonoBehaviour
         rt.anchorMax = Vector2.one;
         rt.offsetMin = Vector2.zero;
         rt.offsetMax = Vector2.zero;
+        return dim;
     }
 
     /// <summary>

@@ -53,30 +53,32 @@ public class MainMenu : MonoBehaviour
 
     // ── Tab definitions ──────────────────────────────────────────────────────
 
-    private enum TabID { Singleplayer = 0, Multiplayer = 1, Controls = 2, Leaderboard = 3, About = 4 }
+    private enum TabID { Singleplayer = 0, Multiplayer = 1, Controls = 2, Leaderboard = 3, Stats = 4, About = 5 }
 
-    // The five piece colors, one per tab - I(cyan), gray(locked), L(orange),
-    // O(yellow), T(purple). Matches the tetromino palette most players expect.
+    // One color per tab — tetromino palette. Stats reuses the green S-piece tone.
     private static readonly Color[] TabColors =
     {
         new(0.00f, 0.74f, 0.83f, 1f),  // Singleplayer - I cyan
         new(0.40f, 0.40f, 0.45f, 1f),  // Multiplayer  - locked gray
         new(1.00f, 0.60f, 0.12f, 1f),  // Controls     - L orange
         new(1.00f, 0.85f, 0.13f, 1f),  // Leaderboard  - O yellow
+        new(0.30f, 0.85f, 0.35f, 1f),  // Stats        - S green
         new(0.67f, 0.28f, 0.85f, 1f),  // About        - T purple
     };
 
-    private static readonly string[] TabLabels = { "SINGLEPLAYER", "MULTIPLAYER", "CONTROLS", "LEADERBOARD", "ABOUT" };
+    private static readonly string[] TabLabels = { "SINGLEPLAYER", "MULTIPLAYER", "CONTROLS", "LEADERBOARD", "STATS", "ABOUT" };
 
     // ── Layout constants (centralized so widths/anchors stay in sync) ────────
 
     // Left-column tabs - anchored top-left, pivot left-center so `basePos`
     // is the tab's left-middle point (easy to slide right on hover/select).
+    // Heights/gaps were tightened when the Stats tab brought the count from
+    // 5 to 6 — the old 108/22 spacing pushed the last tab off-screen at 1080p.
     private const float TabColX         = 60f;
-    private const float TabColTopY      = -250f;   // y of the first tab's top edge
+    private const float TabColTopY      = -220f;   // y of the first tab's top edge
     private const float TabWidth        = 460f;
-    private const float TabHeight       = 108f;
-    private const float TabGap          = 22f;
+    private const float TabHeight       = 90f;
+    private const float TabGap          = 16f;
     private const float TabOutlineInset = 6f;      // how far the outline peeks around the tab
 
     // Right-side content panel - anchored top-right, fills the remaining 2/3.
@@ -138,12 +140,27 @@ public class MainMenu : MonoBehaviour
         BuildCanvas();
         SelectTab(TabID.Singleplayer, animate: false);
         _inputReadyAt = Time.unscaledTime + InputGraceSeconds;
+    }
 
-        // Kick off the looping menu track. Null-safe: if no SFXManager exists
-        // in the scene (easy to forget when building the menu scene fresh),
-        // the menu still runs silently rather than throwing. The music also
-        // no-ops if the _introMusic slot hasn't been filled yet.
-        SFXManager.Instance?.PlayIntroMusic();
+    private void Start()
+    {
+        // Music kick-off is in Start, not Awake, on purpose. Unity guarantees
+        // that every component's Awake finishes before any Start runs, but it
+        // does NOT guarantee the order of sibling Awakes — so if this lived in
+        // Awake it'd race against IntroSFXManager.Awake, which is the thing
+        // that sets IntroSFXManager.Instance. ~50% of the time we'd hit the
+        // null-conditional `?.` while Instance was still null, the call would
+        // silently no-op, and the menu would launch in dead silence even
+        // though the manager is in the scene with clips assigned.
+        //
+        // The give-away that this was an Awake-order race rather than a
+        // missing-clip problem: PlayTabChange (called later, from input)
+        // worked fine while PlayIntroMusic (called from Awake) didn't.
+        //
+        // Null-safe: if no IntroSFXManager exists in the scene at all the
+        // menu still runs silently rather than throwing. The music itself
+        // also no-ops cleanly if both intro track slots are empty.
+        IntroSFXManager.Instance?.PlayIntroMusic();
     }
 
     private void Update()
@@ -240,10 +257,11 @@ public class MainMenu : MonoBehaviour
             _panels[i].SetActive(i == (int)tab);
 
         if (animate && changed)
-            SFXManager.Instance?.PlayTabChange();
+            IntroSFXManager.Instance?.PlayTabChange();
 
         // Refresh dynamic content on entry.
         if (tab == TabID.Leaderboard) RefreshLeaderboardPanel();
+        if (tab == TabID.Stats)       RefreshStatsPanel();
 
         // Footer hint per tab.
         switch (tab)
@@ -252,6 +270,7 @@ public class MainMenu : MonoBehaviour
             case TabID.Multiplayer:  _hintText.text = "▲ ▼  CHANGE TAB     MULTIPLAYER COMING SOON";                 break;
             case TabID.Controls:     _hintText.text = "▲ ▼  CHANGE TAB     ARCADE CABINET BINDINGS";                break;
             case TabID.Leaderboard:  _hintText.text = "▲ ▼  CHANGE TAB     LOCAL TOP-10 SCORES";                     break;
+            case TabID.Stats:        _hintText.text = "▲ ▼  CHANGE TAB     LIFETIME STATS";                         break;
             case TabID.About:        _hintText.text = "▲ ▼  CHANGE TAB     ABOUT BLOCK BATTLE";                      break;
         }
     }
@@ -652,10 +671,12 @@ public class MainMenu : MonoBehaviour
 
     private void BuildAllPanels()
     {
+        // Order MUST match TabID. The list is indexed by (int)tab.
         _panels.Add(BuildSingleplayerPanel());
         _panels.Add(BuildMultiplayerPanel());
         _panels.Add(BuildControlsPanel());
         _panels.Add(BuildLeaderboardPanel());
+        _panels.Add(BuildStatsPanel());
         _panels.Add(BuildAboutPanel());
         for (int i = 0; i < _panels.Count; i++) _panels[i].SetActive(false);
     }
@@ -1010,6 +1031,184 @@ public class MainMenu : MonoBehaviour
                 _lbLines[i].text = "---";
             }
         }
+    }
+
+    // ── Stats panel ──────────────────────────────────────────────────────────
+    //
+    // Two-column lifetime stats display backed by PlayerStats. The left column
+    // is "CLEARS" (line-clear breakdown by type), the right column is "RECORDS
+    // & TOTALS" (per-run records + lifetime totals). Each row is rebuilt via
+    // RefreshStatsPanel whenever the Stats tab is selected, so values are
+    // always live — important because the player will jump from death screen
+    // → main menu and expect the new game's totals to be reflected immediately.
+
+    // Cached label refs for live refresh. Order matches the spec the user gave:
+    // lines, singles, doubles, triples, tetris, mini t-spin, t-spin double,
+    // t-spin triple, perfect clears.
+    private TextMeshProUGUI _statLines;
+    private TextMeshProUGUI _statSingles;
+    private TextMeshProUGUI _statDoubles;
+    private TextMeshProUGUI _statTriples;
+    private TextMeshProUGUI _statTetris;
+    private TextMeshProUGUI _statMiniTSpin;
+    private TextMeshProUGUI _statTSpinDouble;
+    private TextMeshProUGUI _statTSpinTriple;
+    private TextMeshProUGUI _statPerfectClears;
+
+    // Right column.
+    private TextMeshProUGUI _statHighScore;
+    private TextMeshProUGUI _statHighLevel;
+    private TextMeshProUGUI _statHighCombo;
+    private TextMeshProUGUI _statLongestSurvival;
+    private TextMeshProUGUI _statTotalGames;
+    private TextMeshProUGUI _statTotalMinutes;
+    private TextMeshProUGUI _statTotalLevels;
+
+    private GameObject BuildStatsPanel()
+    {
+        GameObject p = CreatePanelShell("Panel_Stats", TabColors[(int)TabID.Stats]);
+
+        CreateLabel(p.transform, "LIFETIME STATS",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, -60f), size: new Vector2(1150f, 80f),
+            fontSize: 50f, color: TabColors[(int)TabID.Stats], style: FontStyles.Bold);
+
+        // Two-column rows. Each column uses the same row-height/zebra pattern
+        // as the Controls / Leaderboard panels for visual consistency.
+        // Layout knobs — pulled out so all rows share them and tweaks land in
+        // one place if a new stat is added later.
+        const float colHeaderY = -150f;
+        const float rowStartY  = -210f;
+        const float rowStep    =  44f;
+        const float colCenterL = -310f; // center of the LEFT column
+        const float colCenterR =  310f; // center of the RIGHT column
+        const float labelW     =  250f; // left-aligned key
+        const float valueW     =  220f; // right-aligned value
+        const float zebraWidth =  560f;
+
+        // Column headers.
+        CreateLabel(p.transform, "CLEARS",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(colCenterL, colHeaderY), size: new Vector2(zebraWidth, 36f),
+            fontSize: 26f, color: TabColors[(int)TabID.Stats], style: FontStyles.Bold,
+            alignment: TextAlignmentOptions.Center);
+        CreateLabel(p.transform, "RECORDS & TOTALS",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(colCenterR, colHeaderY), size: new Vector2(zebraWidth, 36f),
+            fontSize: 26f, color: TabColors[(int)TabID.Stats], style: FontStyles.Bold,
+            alignment: TextAlignmentOptions.Center);
+
+        // ── Left column rows (clear-type counts) ──
+        // Order matches the user-specified spec exactly. Mini-t-spin sits
+        // between Tetris and the larger T-spin variants, matching how players
+        // intuitively rank them by impressiveness.
+        (string label, System.Action<TextMeshProUGUI> assign)[] leftRows =
+        {
+            ("LINES CLEARED",   t => _statLines          = t),
+            ("SINGLES",         t => _statSingles        = t),
+            ("DOUBLES",         t => _statDoubles        = t),
+            ("TRIPLES",         t => _statTriples        = t),
+            ("TETRIS",          t => _statTetris         = t),
+            ("MINI T-SPIN",     t => _statMiniTSpin      = t),
+            ("T-SPIN DOUBLE",   t => _statTSpinDouble    = t),
+            ("T-SPIN TRIPLE",   t => _statTSpinTriple    = t),
+            ("PERFECT CLEARS",  t => _statPerfectClears  = t),
+        };
+        BuildStatColumn(p.transform, leftRows, colCenterL, rowStartY, rowStep, labelW, valueW, zebraWidth);
+
+        // ── Right column rows (records + totals) ──
+        (string label, System.Action<TextMeshProUGUI> assign)[] rightRows =
+        {
+            ("HIGHEST SCORE",     t => _statHighScore       = t),
+            ("HIGHEST LEVEL",     t => _statHighLevel       = t),
+            ("HIGHEST COMBO",     t => _statHighCombo       = t),
+            ("LONGEST SURVIVAL",  t => _statLongestSurvival = t),
+            ("TOTAL GAMES",       t => _statTotalGames      = t),
+            ("TOTAL TIME PLAYED", t => _statTotalMinutes    = t),
+            ("TOTAL LEVELS",      t => _statTotalLevels     = t),
+        };
+        BuildStatColumn(p.transform, rightRows, colCenterR, rowStartY, rowStep, labelW, valueW, zebraWidth);
+
+        return p;
+    }
+
+    /// <summary>
+    /// Lays out one column of stat rows: alternating zebra background, key
+    /// label on the left, value label on the right. The caller's `assign`
+    /// callback is given the value TMP so the per-row stat field can be
+    /// captured for later refresh.
+    /// </summary>
+    private void BuildStatColumn(Transform parent,
+        (string label, System.Action<TextMeshProUGUI> assign)[] rows,
+        float colCenterX, float rowStartY, float rowStep,
+        float labelW, float valueW, float zebraWidth)
+    {
+        for (int i = 0; i < rows.Length; i++)
+        {
+            float y = rowStartY - i * rowStep;
+            float textY = y + rowStep * 0.5f;
+
+            if (i % 2 == 0)
+            {
+                GameObject zebra = new GameObject("zebra");
+                zebra.transform.SetParent(parent, false);
+                Image zimg = zebra.AddComponent<Image>();
+                zimg.sprite = UIRoundedSprite.Default;
+                zimg.type   = Image.Type.Sliced;
+                zimg.color  = new Color(1f, 1f, 1f, 0.04f);
+                zimg.raycastTarget = false;
+                RectTransform zrt = zebra.GetComponent<RectTransform>();
+                zrt.anchorMin = new Vector2(0.5f, 1f);
+                zrt.anchorMax = new Vector2(0.5f, 1f);
+                zrt.pivot     = new Vector2(0.5f, 0.5f);
+                zrt.anchoredPosition = new Vector2(colCenterX, y);
+                zrt.sizeDelta        = new Vector2(zebraWidth, rowStep - 6f);
+            }
+
+            // Label sits at the left of the column. Value sits at the right.
+            // Both use the same baseline `textY` so they read as a single row.
+            float labelX = colCenterX - zebraWidth * 0.5f + labelW * 0.5f + 12f;
+            float valueX = colCenterX + zebraWidth * 0.5f - valueW * 0.5f - 12f;
+
+            CreateLabel(parent, rows[i].label,
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(labelX, textY), size: new Vector2(labelW, rowStep),
+                fontSize: 22f, color: new Color(1f, 1f, 1f, 0.78f), style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Left);
+
+            TextMeshProUGUI value = CreateLabel(parent, "0",
+                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+                anchoredPos: new Vector2(valueX, textY), size: new Vector2(valueW, rowStep),
+                fontSize: 22f, color: new Color(0.5f, 0.9f, 1f), style: FontStyles.Bold,
+                alignment: TextAlignmentOptions.Right);
+
+            rows[i].assign(value);
+        }
+    }
+
+    private void RefreshStatsPanel()
+    {
+        // Re-pull every value from PlayerStats so a game finishing right
+        // before the player reaches this tab shows up immediately.
+        var d = PlayerStats.Get();
+
+        _statLines.text          = d.linesCleared.ToString("N0");
+        _statSingles.text        = d.singles.ToString("N0");
+        _statDoubles.text        = d.doubles.ToString("N0");
+        _statTriples.text        = d.triples.ToString("N0");
+        _statTetris.text         = d.tetris.ToString("N0");
+        _statMiniTSpin.text      = d.miniTSpin.ToString("N0");
+        _statTSpinDouble.text    = d.tSpinDouble.ToString("N0");
+        _statTSpinTriple.text    = d.tSpinTriple.ToString("N0");
+        _statPerfectClears.text  = d.perfectClears.ToString("N0");
+
+        _statHighScore.text       = d.highestScore.ToString("N0");
+        _statHighLevel.text       = d.highestLevel.ToString();
+        _statHighCombo.text       = d.highestComboStreak.ToString();
+        _statLongestSurvival.text = PlayerStats.FormatSeconds(d.longestSurvivalSeconds);
+        _statTotalGames.text      = d.totalGamesPlayed.ToString("N0");
+        _statTotalMinutes.text    = PlayerStats.FormatMinutes(d.totalMinutesPlayed);
+        _statTotalLevels.text     = d.totalLevelsPassed.ToString("N0");
     }
 
     // ── About panel ──────────────────────────────────────────────────────────

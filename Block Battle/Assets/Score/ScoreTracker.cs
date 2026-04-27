@@ -143,6 +143,10 @@ public class ScoreTracker : MonoBehaviour
 
     private static Color GetClearColor(string clearType)
     {
+        // Perfect clears trump everything else — even a PERFECT B2B TETRIS
+        // should feel like a "you did the impossible" moment, so it gets the
+        // brightest, most attention-grabbing color regardless of what's after.
+        if (clearType.StartsWith("PERFECT")) return new Color(1f, 0.35f, 0.85f); // hot pink – Perfect Clear
         if (clearType.StartsWith("B2B"))   return new Color(0f,   1f,   1f);    // cyan   – back-to-back
         if (clearType.Contains("T-SPIN"))  return new Color(0.75f, 0.3f, 1f);  // purple – T-Spin
         if (clearType == "TETRIS")         return new Color(1f,   0.85f, 0f);   // gold   – Tetris

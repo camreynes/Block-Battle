@@ -216,6 +216,15 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""PAUSE1"",
+                    ""type"": ""Button"",
+                    ""id"": ""e42bf911-7633-4ffa-a27a-e4eee65399ee"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -493,6 +502,28 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                     ""action"": ""RIGHT"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""65046b80-8e99-4982-87a7-4de43874c189"",
+                    ""path"": ""<Keyboard>/p"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""PAUSE1"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""a03bc5e0-b31e-414e-a865-b24f962792a8"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""PAUSE1"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -515,6 +546,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         m_PlayerActions_DOWN = m_PlayerActions.FindAction("DOWN", throwIfNotFound: true);
         m_PlayerActions_LEFT = m_PlayerActions.FindAction("LEFT", throwIfNotFound: true);
         m_PlayerActions_RIGHT = m_PlayerActions.FindAction("RIGHT", throwIfNotFound: true);
+        m_PlayerActions_PAUSE1 = m_PlayerActions.FindAction("PAUSE1", throwIfNotFound: true);
     }
 
     ~@TetrixControls()
@@ -609,6 +641,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_PlayerActions_DOWN;
     private readonly InputAction m_PlayerActions_LEFT;
     private readonly InputAction m_PlayerActions_RIGHT;
+    private readonly InputAction m_PlayerActions_PAUSE1;
     /// <summary>
     /// Provides access to input actions defined in input action map "PlayerActions".
     /// </summary>
@@ -677,6 +710,10 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @RIGHT => m_Wrapper.m_PlayerActions_RIGHT;
         /// <summary>
+        /// Provides access to the underlying input action "PlayerActions/PAUSE1".
+        /// </summary>
+        public InputAction @PAUSE1 => m_Wrapper.m_PlayerActions_PAUSE1;
+        /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
         public InputActionMap Get() { return m_Wrapper.m_PlayerActions; }
@@ -744,6 +781,9 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
             @RIGHT.started += instance.OnRIGHT;
             @RIGHT.performed += instance.OnRIGHT;
             @RIGHT.canceled += instance.OnRIGHT;
+            @PAUSE1.started += instance.OnPAUSE1;
+            @PAUSE1.performed += instance.OnPAUSE1;
+            @PAUSE1.canceled += instance.OnPAUSE1;
         }
 
         /// <summary>
@@ -797,6 +837,9 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
             @RIGHT.started -= instance.OnRIGHT;
             @RIGHT.performed -= instance.OnRIGHT;
             @RIGHT.canceled -= instance.OnRIGHT;
+            @PAUSE1.started -= instance.OnPAUSE1;
+            @PAUSE1.performed -= instance.OnPAUSE1;
+            @PAUSE1.canceled -= instance.OnPAUSE1;
         }
 
         /// <summary>
@@ -935,5 +978,12 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnRIGHT(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "PAUSE1" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnPAUSE1(InputAction.CallbackContext context);
     }
 }

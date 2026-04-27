@@ -47,6 +47,12 @@ public class InitializeGrids : MonoBehaviour
         dict.Add("player", player);
         dict.Add("grid", grid);
 
+        // Mark the start of a fresh run for lifetime stats. Singleplayer-only
+        // for now; multiplayer would either bump per-player or skip entirely.
+        // Player 0 is the singleplayer slot — see TetrixInputManager.QueryPlayerId.
+        if (playerId == 0)
+            PlayerStats.StartRun(blockGrid.GetLevel());
+
         // Create a new background for the grid
         GameObject gridBackground = Instantiate(_gridBackgroundPrefab);
         gridBackground.name = $"GridBackground_{playerId}";
