@@ -17,7 +17,7 @@ public class PieceController : MonoBehaviour
     private Vector2Int[] _lastPositions;
 
     // Fall speed derived from level using the official Guideline formula each spawn.
-    // Level 1 → 1.0 s/row  |  Level 10 → ~0.083 s/row  |  Level 20 → ~0.001 s/row
+    // Level 1 → 1.0 s/row  |  Level 10 → ~0.064 s/row  |  Level 15 → ~0.007 s/row (cap)
     private float _timeToFall   = 1.0f;
 
     // Lock-phase timers — recomputed each spawn via GetLock*ForLevel().
@@ -211,8 +211,9 @@ public class PieceController : MonoBehaviour
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Official Tetris Guideline fall-speed formula.
-    /// Level 1 → 1.0 s/row.  Level 10 → ~0.083 s/row.  Level 20 → ~0.001 s/row.
+    /// Official Tetris Guideline fall-speed formula (matches play.tetris.com).
+    ///   G = (0.8 − 0.007·(L−1))^(L−1) seconds per row
+    /// Level 1 → 1.000 s | Level 5 → 0.355 s | Level 10 → 0.064 s | Level 15 → 0.007 s (cap)
     /// </summary>
     private float GetFallSpeedForLevel(int level)
     {
@@ -475,25 +476,70 @@ public class PieceController : MonoBehaviour
 
     private IEnumerator SetBlocksInactive()
     {
-        if (_currentPiece == null) yield break;
+        // Snapshot the piece into a local reference and immediately null out
+        // the field BEFORE we yield anywhere. This closes a race condition
+        // that could orphan an entire row of blocks:
+        //
+        // The "isFull" path below yields WaitForSeconds(Global.effectDuration)
+        // — about 110 ms of shine animation — between marking the blocks
+        // inactive and actually calling ClearRows. During that wait Update()
+        // keeps running, and back when this method held _currentPiece across
+        // the yield two things could happen:
+        //
+        //   1. HoldPiece() saw a non-null _currentPiece, swapped the just-
+        //      locked piece into the hold slot, Destroy()'d the piece, and
+        //      set _currentPiece = null. When the coroutine resumed, the
+        //      _currentPiece.GetPieceType() call NRE'd, FinishDestroy never
+        //      ran, ClearRows never ran, and the full rows stayed on the
+        //      board for the rest of the run.
+        //
+        //   2. A rotate input during the shine window kicked the locked
+        //      piece into nearby empty cells. NullGridLocations() then
+        //      cleared the just-locked references out of _blocksInGrid,
+        //      and even though the visible blocks were still parented to
+        //      the row, CheckRowsFull stopped seeing the row as full.
+        //
+        // Both cases reproduce the bug Cam reported (a placement that
+        // visually settles but doesn't trigger a clear). Detaching the
+        // field up front means Update()'s _currentPiece == null guard
+        // turns every "during shine" input into a no-op, which is what
+        // the visible behaviour already implies — the piece is committed.
+        PieceScript piece = _currentPiece;
+        if (piece == null) yield break;
+        _currentPiece = null;
 
         // Award soft-drop bonus (1 pt/row, no level multiplier per guideline)
         if (_softDropRows > 0) _grid.AddDropPoints(_softDropRows);
 
-        bool isFull = _currentPiece.SetBlocksInactive(gameObject);
+        // Capture rotation + pivot BEFORE SetBlocksInactive runs. We use the live
+        // piece's current pivot (positions[0]) instead of _lastPositions[0] because
+        // _lastPositions only updates on player input — gravity drops and hard drops
+        // would otherwise leave it stale, which silently breaks T-spin corner checks.
+        int rotationAtLock = piece.GetRotation();
+        Vector2Int[] livePositions = piece.GetPositions();
+        Vector2Int  pivotAtLock    = livePositions.Length > 0 ? livePositions[0] : Vector2Int.zero;
+
+        bool isFull = piece.SetBlocksInactive(gameObject);
         if (isFull)
         {
             yield return new WaitForSeconds(Global.effectDuration);
-            PieceInfo pieceInfo = new PieceInfo(_currentPiece.GetPieceType(), _lastMoveRotate, _lastPositions[0]);
+            PieceInfo pieceInfo = new PieceInfo(
+                piece.GetPieceType(), _lastMoveRotate, pivotAtLock, rotationAtLock);
             _grid.IncrementScore();
-            _currentPiece.FinishDestroy(pieceInfo);
+            piece.FinishDestroy(pieceInfo);
         }
         else
         {
+            // No lines cleared, but a 0-line T-spin / Mini T-spin still scores per
+            // Tetris guideline (T-Spin = 400 × level, Mini T-Spin = 100 × level)
+            // and maintains the B2B chain. Combo, however, only counts line clears,
+            // so we still reset the streak below.
+            PieceInfo pieceInfo = new PieceInfo(
+                piece.GetPieceType(), _lastMoveRotate, pivotAtLock, rotationAtLock);
+            _grid.OnPieceLockNoClear(pieceInfo);
             _grid.ResetScoreStreak();
         }
 
-        _currentPiece = null;
         _recentlyHeld = false;
     }
 

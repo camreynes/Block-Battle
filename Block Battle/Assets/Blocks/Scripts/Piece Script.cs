@@ -20,11 +20,13 @@ public class PieceInfo
     public PieceType pieceType;
     public bool lastMoveRotate;
     public Vector2Int centerPos;
-    public PieceInfo(PieceType type, bool lastMoveRotate, Vector2Int centerPos)
+    public int rotationState; // 0=spawn (stub up), 1=right, 2=reverse, 3=left — used for Mini T-spin detection
+    public PieceInfo(PieceType type, bool lastMoveRotate, Vector2Int centerPos, int rotationState = 0)
     {
         pieceType = type;
         this.lastMoveRotate = lastMoveRotate;
         this.centerPos = centerPos;
+        this.rotationState = rotationState;
     }
 }
 
@@ -345,4 +347,10 @@ public class PieceScript : MonoBehaviour
         return copy;
     }
 
+    /// <summary>
+    /// Current SRS rotation state of the piece (0=spawn, 1=right, 2=reverse, 3=left).
+    /// Needed at lock time so BlockGrid can distinguish full T-spins from Mini T-spins
+    /// — front corners depend on which way the T's stub is pointing.
+    /// </summary>
+    public int GetRotation() => _currentRotation;
 }

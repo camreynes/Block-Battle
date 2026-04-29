@@ -26,10 +26,16 @@ public class BlockGrid : MonoBehaviour
     private int _level = 1;
     private bool _backToBack = false;      // true when last eligible clear was Tetris or T-Spin
 
-    // Bonus added on top of the regular line-clear scoring whenever the
-    // board ends a clear completely empty. Multiplied by level like every
-    // other guideline-style bonus.
-    private const int PerfectClearBonus = 3500;
+    // Per-line-count All Clear bonuses (multiplied by level). Matches the
+    // official Tetris Guideline / play.tetris.com:
+    //   1-line PC = 800 × level
+    //   2-line PC = 1200 × level
+    //   3-line PC = 1800 × level
+    //   4-line PC = 2000 × level
+    // A B2B chain that ends in a 4-line PC adds +1200 × level on top
+    // (the "B2B All Clear" bonus). Indexed by (linesCleared - 1).
+    private static readonly int[] PerfectClearBonusByLines = { 800, 1200, 1800, 2000 };
+    private const int B2BPerfectClearBonus = 1200;
     private ScoreTracker _scoreTracker;
 
     private Vector2 _position; //represents bottom left position of the grid
@@ -210,12 +216,14 @@ public class BlockGrid : MonoBehaviour
         _scoreTracker?.UpdateScore(_totalScore, "", _scoreStreak, _level, _linesCleared);
     }
 
-    // Official Tetris Guideline scoring (× Level)
+    // Official Tetris Guideline scoring (× Level) — matches play.tetris.com
     // Single 100 | Double 300 | Triple 500 | Tetris 800
-    // T-Spin Single 800 | T-Spin Double 1200 | T-Spin Triple 1600
-    // B2B bonus: ×1.5 on the base before level multiplier
+    // T-Spin (0 lines) 400 | T-Spin Single 800 | T-Spin Double 1200 | T-Spin Triple 1600
+    // Mini T-Spin (0 lines) 100 | Mini T-Spin Single 200
+    // B2B bonus: ×1.5 on the base for consecutive difficult clears (Tetris, T-spin, Mini)
     // Combo: 50 × (streak - 1) × level (0 on first consecutive clear)
     // Soft drop: 1 pt/row  |  Hard drop: 2 pts/row  (no level multiplier – handled in PieceController)
+    // Perfect Clear: per-line-count bonus (800/1200/1800/2000 × level), +1200 × level if B2B 4-line
     private void CalculcateScore(List<Tuple<int, int, int>> rowsToShift, PieceInfo info)
     {
         int totalRowsCleared = 0;
@@ -225,23 +233,39 @@ public class BlockGrid : MonoBehaviour
         if (totalRowsCleared == 0)
             return;
 
-        // --- Determine clear type and base points ---
-        // T-Spin condition: T piece, last move was a rotation, 3+ corners occupied
-        bool tspinCheck = info.pieceType == PieceType.T
-                          && info.lastMoveRotate
-                          && GetCornersOccupied(info.centerPos) >= 3;
+        // --- T-spin detection (full vs mini) ---
+        // Full T-spin: T piece + last move was rotation + 3+ total corners + 2+ FRONT corners
+        // Mini T-spin: same conditions but only 0–1 front corners (so 2+ back corners)
+        // "Front" corners are the two corners adjacent to the side the T's stub points to.
+        bool tspinAny = info.pieceType == PieceType.T
+                        && info.lastMoveRotate
+                        && GetCornersOccupied(info.centerPos) >= 3;
+        bool tspinFull = false;
+        bool tspinMini = false;
+        if (tspinAny)
+        {
+            int frontCorners = GetFrontCornersOccupied(info.centerPos, info.rotationState);
+            if (frontCorners >= 2) tspinFull = true;
+            else                   tspinMini = true;
+        }
 
         int basePoints = 0;
         string clearType = "";
-        bool b2bEligible = false; // Tetris or T-Spin clears qualify for back-to-back
+        bool b2bEligible = false; // Tetris, T-spin (full or mini) qualify for back-to-back
 
         switch (totalRowsCleared)
         {
             case 1:
-                if (tspinCheck)
+                if (tspinFull)
                 {
                     clearType = "T-SPIN SINGLE";
                     basePoints = 800;
+                    b2bEligible = true;
+                }
+                else if (tspinMini)
+                {
+                    clearType = "MINI T-SPIN SINGLE";
+                    basePoints = 200;
                     b2bEligible = true;
                 }
                 else
@@ -252,7 +276,7 @@ public class BlockGrid : MonoBehaviour
                 break;
 
             case 2:
-                if (tspinCheck)
+                if (tspinFull)
                 {
                     clearType = "T-SPIN DOUBLE";
                     basePoints = 1200;
@@ -266,7 +290,7 @@ public class BlockGrid : MonoBehaviour
                 break;
 
             case 3:
-                if (tspinCheck)
+                if (tspinFull)
                 {
                     clearType = "T-SPIN TRIPLE";
                     basePoints = 1600;
@@ -289,13 +313,17 @@ public class BlockGrid : MonoBehaviour
                 break;
         }
 
-        // --- Back-to-back bonus: ×1.5 on base for consecutive Tetris / T-Spin ---
-        if (b2bEligible && _backToBack)
+        // --- Back-to-back bonus: ×1.5 on base for consecutive difficult clears ---
+        // Capture the chain state BEFORE updating it so we can apply the B2B
+        // Perfect Clear bonus correctly below (which depends on whether we
+        // were already in a B2B chain coming into this Tetris).
+        bool wasB2B = _backToBack;
+        if (b2bEligible && wasB2B)
         {
             basePoints = Mathf.RoundToInt(basePoints * 1.5f);
             clearType = "B2B " + clearType;
         }
-        _backToBack = b2bEligible; // update chain for next piece
+        _backToBack = b2bEligible; // any non-eligible clear (Single/Double/Triple) breaks the chain
 
         // --- Official level multiplier on base points ---
         int linesClearPoints = basePoints * _level;
@@ -303,17 +331,20 @@ public class BlockGrid : MonoBehaviour
         // --- Combo bonus: 50 × (streak - 1) × level (0 on the very first consecutive clear) ---
         int comboBonus = (_scoreStreak > 1) ? 50 * (_scoreStreak - 1) * _level : 0;
 
-        // --- Perfect clear: every cell empty after this clear lands a fat bonus ---
+        // --- Perfect clear: per-line-count bonus, +1200 × level if B2B 4-line ---
         // Detection happens AFTER ClearRows has already wiped the rows but
         // BEFORE the post-clear shifts run, so an empty grid here means the
-        // clear emptied the board. Bonus is level-scaled like the rest of
-        // guideline scoring.
+        // clear emptied the board.
         bool perfect = IsBoardEmptyAfterClear();
         int perfectBonus = 0;
-        if (perfect)
+        if (perfect && totalRowsCleared >= 1 && totalRowsCleared <= 4)
         {
-            perfectBonus = PerfectClearBonus * _level;
-            clearType    = "PERFECT " + clearType;
+            perfectBonus = PerfectClearBonusByLines[totalRowsCleared - 1] * _level;
+            // B2B All Clear bonus: only applies to a 4-line PC that's part of an
+            // existing B2B chain (i.e., wasB2B == true and this is a Tetris).
+            if (wasB2B && totalRowsCleared == 4)
+                perfectBonus += B2BPerfectClearBonus * _level;
+            clearType = "PERFECT " + clearType;
         }
 
         int earned = linesClearPoints + comboBonus + perfectBonus;
@@ -328,6 +359,43 @@ public class BlockGrid : MonoBehaviour
         string statClearType = perfect ? clearType.Substring("PERFECT ".Length) : clearType;
         PlayerStats.RecordClear(statClearType);
         if (perfect) PlayerStats.RecordPerfectClear();
+
+        _scoreTracker?.UpdateScore(_totalScore, clearType, _scoreStreak, _level, _linesCleared);
+        GameplaySFXManager.Instance?.PlayClearType(clearType);
+    }
+
+    /// <summary>
+    /// Called by PieceController when a piece locks WITHOUT clearing any lines.
+    /// 0-line T-spins still score (T-Spin = 400 × level, Mini T-Spin = 100 × level)
+    /// and maintain the B2B chain even though no lines were cleared. Combo is
+    /// handled separately by the caller — line clears are the only thing that
+    /// extend a combo, so this method does not touch _scoreStreak.
+    /// </summary>
+    public void OnPieceLockNoClear(PieceInfo info)
+    {
+        if (info.pieceType != PieceType.T || !info.lastMoveRotate) return;
+        if (GetCornersOccupied(info.centerPos) < 3) return;
+
+        bool isMini = GetFrontCornersOccupied(info.centerPos, info.rotationState) < 2;
+        int basePoints = isMini ? 100 : 400;
+        string clearType = isMini ? "MINI T-SPIN" : "T-SPIN";
+
+        // 0-line T-spins ARE B2B-eligible per Tetris Guideline. Apply ×1.5 if
+        // already in chain, then maintain/start the chain regardless.
+        if (_backToBack)
+        {
+            basePoints = Mathf.RoundToInt(basePoints * 1.5f);
+            clearType = "B2B " + clearType;
+        }
+        _backToBack = true;
+
+        int earned = basePoints * _level;
+        _totalScore += earned;
+
+        Debug.Log($"[Lvl {_level}] {clearType} (no lines) | +{earned} | Total:{_totalScore}");
+
+        string statClearType = clearType.StartsWith("B2B ") ? clearType.Substring(4) : clearType;
+        PlayerStats.RecordClear(statClearType);
 
         _scoreTracker?.UpdateScore(_totalScore, clearType, _scoreStreak, _level, _linesCleared);
         GameplaySFXManager.Instance?.PlayClearType(clearType);
@@ -365,6 +433,31 @@ public class BlockGrid : MonoBehaviour
     }
 
     /// <summary>
+    /// Counts how many of the T's two FRONT corners are filled — i.e. the corners
+    /// adjacent to the side the stub points to. This is what distinguishes a
+    /// proper T-spin (≥2 front corners filled) from a Mini T-spin (≤1 front).
+    ///
+    /// Rotation states (matches PieceScript._currentRotation):
+    ///   0 = spawn  → stub points UP    → front corners = top-left,    top-right
+    ///   1 = right  → stub points RIGHT → front corners = top-right,   bottom-right
+    ///   2 = reverse→ stub points DOWN  → front corners = bottom-left, bottom-right
+    ///   3 = left   → stub points LEFT  → front corners = top-left,    bottom-left
+    /// </summary>
+    private int GetFrontCornersOccupied(Vector2Int centerPos, int rotation)
+    {
+        int dxA, dyA, dxB, dyB;
+        switch (rotation)
+        {
+            case 0:  dxA = -1; dyA =  1; dxB =  1; dyB =  1; break; // top corners
+            case 1:  dxA =  1; dyA =  1; dxB =  1; dyB = -1; break; // right corners
+            case 2:  dxA = -1; dyA = -1; dxB =  1; dyB = -1; break; // bottom corners
+            default: dxA = -1; dyA =  1; dxB = -1; dyB = -1; break; // left corners (rot 3)
+        }
+        return IsOccupied(centerPos.x + dxA, centerPos.y + dyA)
+             + IsOccupied(centerPos.x + dxB, centerPos.y + dyB);
+    }
+
+    /// <summary>
     /// Modified isAvailable method
     /// </summary>
     /// <returns>0 if available, 1 otherwise</returns>
@@ -385,9 +478,14 @@ public class BlockGrid : MonoBehaviour
     /// <param name="fullRows"></param>
     public void ClearRows(List<int> fullRows, PieceInfo info)
     {
-        // --- Track lines and derive level (1 level per 10 lines, capped at 20) ---
+        // --- Track lines and derive level (1 level per 10 lines, capped at 15) ---
+        // Matches play.tetris.com Marathon: 10 lines per level, max level 15.
+        // The gravity formula in PieceController already caps speed around L15
+        // (b = 0.8 - 0.007×(L-1) goes ≤ 0 past L≈115, so speed plateaus at the
+        // 0.001s floor anyway), and Marathon ends at 150 lines on play.tetris.com.
+        // Bump this if you want endless play with continued score multipliers.
         _linesCleared += fullRows.Count;
-        _level = Mathf.Min(_linesCleared / 10 + 1, 20);
+        _level = Mathf.Min(_linesCleared / 10 + 1, 15);
 
         // ---------- Clear Rows, Destroy Game Objects ----------
         for (int i = 0; i < fullRows.Count; i++)

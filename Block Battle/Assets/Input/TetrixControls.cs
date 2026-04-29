@@ -232,7 +232,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""0a455b1f-cf9c-486e-a430-40be18cf55f6"",
-                    ""path"": ""<Keyboard>/a"",
+                    ""path"": ""<Keyboard>/leftArrow"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -254,7 +254,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""b336f510-69be-49be-a837-3da76b7ca6b3"",
-                    ""path"": ""<Keyboard>/d"",
+                    ""path"": ""<Keyboard>/rightArrow"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -276,7 +276,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""3f6f2422-3b90-4ece-9110-5c163e97577a"",
-                    ""path"": ""<Keyboard>/s"",
+                    ""path"": ""<Keyboard>/downArrow"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -320,7 +320,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""a6671744-361b-4e24-89ed-b983c8ca05e8"",
-                    ""path"": ""<Keyboard>/w"",
+                    ""path"": ""<Keyboard>/upArrow"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -342,7 +342,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""c2eedc2c-bd26-4efd-b89b-a2c1e7d268ad"",
-                    ""path"": ""<Keyboard>/r"",
+                    ""path"": ""<Keyboard>/z"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -353,7 +353,7 @@ public partial class @TetrixControls: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""045c6645-c2a7-4db1-98ba-c2305c1f3f6d"",
-                    ""path"": ""<Keyboard>/e"",
+                    ""path"": ""<Keyboard>/c"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",

@@ -41,8 +41,10 @@ public static class PlayerStats
         public int doubles;
         public int triples;
         public int tetris;
-        public int miniTSpin;
-        public int tSpinSingle;   // not in the user-facing list but harmless to track
+        public int tSpinZero;        // 0-line T-Spin (full)
+        public int miniTSpin;        // 0-line Mini T-Spin
+        public int miniTSpinSingle;  // 1-line Mini T-Spin
+        public int tSpinSingle;      // not in the user-facing list but harmless to track
         public int tSpinDouble;
         public int tSpinTriple;
         public int perfectClears;
@@ -180,14 +182,16 @@ public static class PlayerStats
         var d = Get();
         switch (raw)
         {
-            case "SINGLE":         d.singles      += 1; d.linesCleared += 1; break;
-            case "DOUBLE":         d.doubles      += 1; d.linesCleared += 2; break;
-            case "TRIPLE":         d.triples      += 1; d.linesCleared += 3; break;
-            case "TETRIS":         d.tetris       += 1; d.linesCleared += 4; break;
-            case "T-SPIN SINGLE":  d.tSpinSingle  += 1; d.linesCleared += 1; break;
-            case "T-SPIN DOUBLE":  d.tSpinDouble  += 1; d.linesCleared += 2; break;
-            case "T-SPIN TRIPLE":  d.tSpinTriple  += 1; d.linesCleared += 3; break;
-            case "MINI T-SPIN":    d.miniTSpin    += 1; d.linesCleared += 1; break;
+            case "SINGLE":              d.singles         += 1; d.linesCleared += 1; break;
+            case "DOUBLE":              d.doubles         += 1; d.linesCleared += 2; break;
+            case "TRIPLE":              d.triples         += 1; d.linesCleared += 3; break;
+            case "TETRIS":              d.tetris          += 1; d.linesCleared += 4; break;
+            case "T-SPIN":              d.tSpinZero       += 1; /* 0 lines */         break;
+            case "T-SPIN SINGLE":       d.tSpinSingle     += 1; d.linesCleared += 1; break;
+            case "T-SPIN DOUBLE":       d.tSpinDouble     += 1; d.linesCleared += 2; break;
+            case "T-SPIN TRIPLE":       d.tSpinTriple     += 1; d.linesCleared += 3; break;
+            case "MINI T-SPIN":         d.miniTSpin       += 1; /* 0 lines */         break;
+            case "MINI T-SPIN SINGLE":  d.miniTSpinSingle += 1; d.linesCleared += 1; break;
 
             // Unknown / non-clear types (empty string for soft drops, etc.)
             // fall through silently. Better than throwing on a typo.

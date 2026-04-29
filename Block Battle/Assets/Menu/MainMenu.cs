@@ -731,7 +731,7 @@ public class MainMenu : MonoBehaviour
             anchoredPos: new Vector2(0f, -70f), size: new Vector2(1150f, 90f),
             fontSize: 64f, color: new Color(0f, 0.9f, 1f), style: FontStyles.Bold);
 
-        CreateLabel(p.transform, "CLASSIC BLOCK BATTLE - CLEAR LINES, CLIMB LEVELS, CHASE YOUR HIGH SCORE.",
+        CreateLabel(p.transform, "CLASSIC BLOCK BATTLE - CLEAR LINES, CLIMB LEVELS, CHASE A NEW HIGH SCORE",
             anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
             anchoredPos: new Vector2(0f, -170f), size: new Vector2(1150f, 45f),
             fontSize: 24f, color: new Color(1f, 1f, 1f, 0.8f), style: FontStyles.Normal);
@@ -801,7 +801,7 @@ public class MainMenu : MonoBehaviour
             anchoredPos: new Vector2(0f, -60f), size: new Vector2(1150f, 50f),
             fontSize: 32f, color: new Color(1f, 0.85f, 0.4f), style: FontStyles.Bold);
 
-        CreateLabel(p.transform, "Battle your friends with garbage sends, KO counters, and real-time chaos. Soon.",
+        CreateLabel(p.transform, "1v1 Tetris™ Friends inspired battle with garbage sends, KO counters, and real-time chaos",
             anchor: new Vector2(0.5f, 0.5f), pivot: new Vector2(0.5f, 0.5f),
             anchoredPos: new Vector2(0f, -115f), size: new Vector2(1150f, 40f),
             fontSize: 22f, color: new Color(1f, 1f, 1f, 0.55f), style: FontStyles.Italic);
@@ -1216,41 +1216,32 @@ public class MainMenu : MonoBehaviour
 
     // ── About panel ──────────────────────────────────────────────────────────
     //
-    // ╔═══════════════════════════════════════════════════════════════════════╗
-    // ║  ABOUT PANEL - EDIT THIS BLOCK TO CUSTOMIZE                           ║
-    // ╚═══════════════════════════════════════════════════════════════════════╝
+    // Three-section layout:
+    //   • Top-middle:   title + a paragraph describing what Block Battle is.
+    //   • Bottom-left:  "CREATED BY" header + Cameron Reynes + four social rows.
+    //   • Bottom-right: "SPECIAL THANKS TO" header + Grant Harvey + two rows.
     //
-    // The About tab has two edit surfaces:
-    //   1. The AboutFacts array below - key/value rows baked into the code.
-    //   2. The four SocialLink [SerializeField] slots - exposed in the
-    //      Inspector so PNG icons and handles can be swapped without
-    //      recompiling. Clearing a slot's Handle field hides that row.
-    // Plus the layout constants further down (spacing, column x, icon size).
-    // Drop in new facts or tweak the Inspector slots and the panel rebuilds
-    // itself - no need to touch the Build method unless you want a
-    // different visual treatment.
+    // Each social row renders as [PNG icon] [LABEL] [handle]. The PNGs live
+    // under Assets/Menu/Resources/SocialIcons/ — being inside a Resources
+    // folder is the only sanctioned way to load assets by string at runtime
+    // in a built Unity player, so we keep them there and Resources.Load them
+    // on first use. The procedural-badge fallback in BuildSocialIcon below
+    // is preserved as a safety net for the case where a load fails (e.g.
+    // someone moves the folder out of Resources at some point).
 
-    /// <summary>Style of the procedural fallback badge, used when a slot has
-    /// no iconSprite assigned. Instagram gets a special "lens" motif; every
-    /// other value falls through to the generic first-letter badge. Adding a
-    /// new enum value is only needed if you want brand-specific procedural
-    /// decoration - dropping a PNG in the Inspector bypasses this entirely.</summary>
+    /// <summary>Hint for the procedural fallback in BuildSocialIcon when a
+    /// row's iconSprite is null. Once the Resources PNGs are wired up this
+    /// fallback rarely runs, but it still kicks in cleanly if a load fails.
+    /// Instagram gets a small camera-lens motif; everything else falls
+    /// through to a brand-tinted first-letter badge.</summary>
     private enum SocialIcon { Email, Instagram, Discord, YouTube, GitHub, LinkedIn, Twitter, Generic }
 
-    /// <summary>One row of the About panel's link list. Marked [Serializable]
-    /// so each instance can be exposed as its own Inspector slot - drop a
-    /// PNG into `iconSprite` to use custom artwork, or leave it blank to
-    /// render the procedural brand-colored first-letter badge. Clearing
-    /// `handle` in the Inspector hides the row entirely, which is the
-    /// supported way to turn a platform off without deleting the field.
-    /// This used to be a readonly struct backing a static array, but Unity's
-    /// serializer can't see struct fields, so it had to become a class with
-    /// public fields to make it Inspector-editable.</summary>
-    // Private + [Serializable] is the sweet spot here: Unity's Inspector still
-    // sees it via SerializeField, but it stays a MainMenu implementation
-    // detail. Making it public would force SocialIcon public too (CS0052 - a
-    // public class can't expose a private-enum field), which isn't worth it.
-    [System.Serializable]
+    /// <summary>One credit row. Used to be Inspector-driven (one [SerializeField]
+    /// per platform) but the four PNGs we ship are now wired up automatically
+    /// via Resources.Load, so the rows are constructed in code where the
+    /// content lives next to the section it belongs to. Tint colors the bold
+    /// LABEL text and is also reused by the procedural-badge fallback when
+    /// no iconSprite is available.</summary>
     private class SocialLink
     {
         public SocialIcon icon = SocialIcon.Generic;
@@ -1260,186 +1251,268 @@ public class MainMenu : MonoBehaviour
         public Color      tint   = Color.white;
     }
 
-    // ── Facts block ──
-    // Key / value rows. The left column is the key (right-aligned, dim), the
-    // right column is the value (left-aligned, bright). Bullet " • " renders
-    // cleanly in TMP's default atlas, unlike emoji.
-    private static readonly (string key, string value)[] AboutFacts =
+    // Brand-ish tints for the bold LABEL text. Restrained on purpose so they
+    // don't fight the rest of the menu's tetromino palette. GitHub is a cool
+    // off-white because the actual GitHub logo is monochrome and a dark gray
+    // tint would make the LABEL text disappear against the dark panel BG.
+    private static readonly Color TintEmail     = new(0.95f, 0.55f, 0.25f);
+    private static readonly Color TintInstagram = new(0.91f, 0.27f, 0.53f);
+    private static readonly Color TintGithub    = new(0.78f, 0.78f, 0.85f);
+    private static readonly Color TintLinkedin  = new(0.30f, 0.62f, 0.92f);
+
+    // Sprite handles cached at first About-panel build. Static so a hot
+    // reload that re-runs Awake doesn't pay for the load again, and lazy
+    // (rather than fired from Awake) so a player who never opens the About
+    // tab doesn't pay for them at all.
+    private static Sprite _iconEmail, _iconInstagram, _iconGithub, _iconLinkedin;
+    private static bool   _iconsLoaded;
+
+    private static void EnsureSocialIcons()
     {
-        ("GAME",     "BLOCK BATTLE"),
-        ("BUILT BY", "CAM"),
-        ("ENGINE",   "UNITY  •  C#  •  NEW INPUT SYSTEM"),
-        ("RULESET",  "SRS ROTATION  •  ONE HOLD PER PIECE"),
-        ("STATUS",   "SINGLEPLAYER SHIPPED  •  MULTIPLAYER IN DEV"),
-    };
-
-    // ── Social / external links (Inspector-driven) ──
-    // Each slot below shows up as its own collapsible block in the Inspector.
-    // To customize a row: set Label (e.g. "INSTAGRAM"), Handle (e.g.
-    // "@blockbattle" or a full URL), and either drop a PNG into Icon Sprite
-    // or pick a Tint and let the procedural first-letter badge render.
-    // Tint multiplies the sprite when one is assigned - keep it white if
-    // you've imported a full-color logo. Cleared Handle = hidden row.
-    //
-    // Note: these are instance fields (not static like AboutFacts above)
-    // because Unity's serializer only sees instance state - that's the price
-    // of getting Inspector slots. The defaults below are baked-in suggestions
-    // and only matter the first time the component is added to a scene;
-    // after that the Inspector is the source of truth.
-    [Header("About Tab - Social Links (drag PNGs into Icon Sprite to use custom art)")]
-    [SerializeField] private SocialLink _emailLink     = new() { icon = SocialIcon.Email,     label = "EMAIL",     handle = "guardedflight@gmail.com", tint = new Color(0.95f, 0.55f, 0.25f) };
-    [SerializeField] private SocialLink _instagramLink = new() { icon = SocialIcon.Instagram, label = "INSTAGRAM", handle = "@blockbattle",            tint = new Color(0.91f, 0.27f, 0.53f) };
-    [SerializeField] private SocialLink _githubLink    = new() { icon = SocialIcon.GitHub,    label = "GITHUB",    handle = "github.com/cam",          tint = new Color(0.20f, 0.20f, 0.20f) };
-    [SerializeField] private SocialLink _linkedinLink  = new() { icon = SocialIcon.LinkedIn,  label = "LINKEDIN",  handle = "linkedin.com/in/cam",     tint = new Color(0.05f, 0.42f, 0.68f) };
-
-    // ── Footer text ──
-    // The single italic line at the bottom of the About panel. Set to null
-    // or empty to hide it.
-    private const string AboutFooter = "Thanks for playing. Stack well.";
+        if (_iconsLoaded) return;
+        _iconsLoaded = true;
+        // The PNG metas were imported with spriteMode=Multiple (the default
+        // when the importer auto-carves a single sub-sprite from a non-power-
+        // of-two source). Resources.Load<Sprite>(path) returns null on those
+        // because there's no "main" sprite asset — only sub-sprites. LoadAll
+        // works for both Single and Multiple, so it's the safer call and
+        // survives any future re-import that flips the importer mode.
+        Sprite Pick(string name)
+        {
+            var all = Resources.LoadAll<Sprite>("SocialIcons/" + name);
+            return (all != null && all.Length > 0) ? all[0] : null;
+        }
+        _iconEmail     = Pick("gmail");
+        _iconInstagram = Pick("instagram");
+        _iconGithub    = Pick("github");
+        _iconLinkedin  = Pick("linkedin");
+    }
 
     // ── Layout knobs ──
-    // Y is measured from the top of the About panel (so more negative =
-    // further down). X is measured from the panel's horizontal center.
-    // Tune these if you add enough entries to overflow, or if you want the
-    // block shifted left / right / tighter / looser.
-    private const float AboutTitleY        =  -60f;   // "ABOUT BLOCK BATTLE"
-    private const float AboutFactStartY    = -160f;   // top row of facts
-    private const float AboutFactStep      =   44f;   // vertical gap between fact rows
-    private const float AboutFactKeyX      = -350f;   // right-edge x of key column
-    private const float AboutFactValueX    =  260f;   // left-edge x of value column
-    private const float AboutLinksHeaderY  = -410f;   // "LINKS" subheading y
-    private const float AboutLinkStartY    = -460f;   // first link row y (center of row)
-    private const float AboutLinkStep      =   60f;   // vertical gap between link rows
-    private const float AboutLinkIconX     = -360f;   // x of the icon badge center
-    private const float AboutLinkLabelX    = -300f;   // left edge of "INSTAGRAM"
-    private const float AboutLinkHandleX   =  -60f;   // left edge of "@handle"
-    private const float AboutIconSize      =   48f;   // width/height of the badge
+    // Y is measured from the panel's TOP (negative = down). X for the LEFT
+    // column is from the panel's left edge (positive = right); for the RIGHT
+    // column it's measured from the right edge (negative = left). Both
+    // columns share the same row strip width so the icon, label, and handle
+    // line up across rows within their own column.
+    //
+    // Sizing notes from earlier passes: AboutLabelWidth has to be wider than
+    // the longest LABEL text rendered at the row font size, otherwise TMP
+    // (which has wrapping disabled in CreateLabel) overflows the box and
+    // the label visually crashes into the handle. "INSTAGRAM" at 24pt bold
+    // measures roughly ~140px, so 180 leaves a comfortable buffer.
+    // AboutHandleWidth has to clear the longest handle string we render —
+    // "grantharvey616@gmail.com" at 24pt is ~290px, fits in 320 with room.
+    // Strip width × 2 + 2*inset must stay under PanelWidth (1260) — current
+    // strip is 576 (52+14+180+10+320), giving 48px between the columns.
+    private const float AboutTitleY         =  -60f;
+    private const float AboutDescY          = -150f;
+    private const float AboutDescHeight     =  240f;
+    private const float AboutDescWidth      = 1180f;
 
-    // ╔═══════════════════════════════════════════════════════════════════════╗
-    // ║  END OF CUSTOMIZATION BLOCK                                            ║
-    // ╚═══════════════════════════════════════════════════════════════════════╝
+    private const float AboutSectionHeaderY = -395f;   // "CREATED BY" / "SPECIAL THANKS TO"
+    private const float AboutSectionNameY   = -440f;   // name + role line just below the header
+    private const float AboutCreditFirstY   = -510f;   // first row's icon-center y
+    private const float AboutCreditStep     =   58f;   // gap between row centers
+    private const float AboutSectionInsetX  =   30f;   // horizontal padding inside the panel
+    private const float AboutIconSize       =   52f;
+    private const float AboutLabelWidth     =  180f;
+    private const float AboutHandleWidth    =  320f;
+
+    // Font sizes. Pulled out as named constants because earlier they were
+    // sprinkled inline and any tune-up turned into a multi-spot edit. Pumped
+    // up from the original sizing pass — the panel is 1260×720 and the
+    // earlier ~20pt sizing left a lot of dead space.
+    private const float AboutDescFontSize   = 28f;
+    private const float AboutHeaderFontSize = 24f;
+    private const float AboutNameFontSize   = 28f;
+    private const float AboutRowFontSize    = 24f;
 
     private GameObject BuildAboutPanel()
     {
+        EnsureSocialIcons();
+
         GameObject p = CreatePanelShell("Panel_About", TabColors[(int)TabID.About]);
 
+        // ── Title ──
         CreateLabel(p.transform, "ABOUT BLOCK BATTLE",
             anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
             anchoredPos: new Vector2(0f, AboutTitleY), size: new Vector2(1150f, 80f),
             fontSize: 50f, color: TabColors[(int)TabID.About], style: FontStyles.Bold);
 
-        // Facts section. Each AboutFacts entry becomes a right-aligned key
-        // column + left-aligned value column. Heights scale from AboutFactStep
-        // so a shorter step tightens the whole block without per-row fiddling.
-        for (int i = 0; i < AboutFacts.Length; i++)
-        {
-            float y = AboutFactStartY - i * AboutFactStep;
+        // ── Top-middle blurb ──
+        // CreateLabel disables word wrapping by default since most labels in
+        // this menu are single-line strips. The about paragraph is the one
+        // place that needs wrapping, so we flip it back on after the fact
+        // rather than threading another parameter through every CreateLabel
+        // call elsewhere.
+        var desc = CreateLabel(p.transform,
+            "I developed Block Battle during my junior and senior years of undergraduate as a fun personal project. " +
+            "It was meant to replicate the deprecated 'Tetris Friends' game. Multiplayer (1v1) is in development; " +
+            "however, school and work have taken priority. " +
+            "This game was developed to nearly match SRS (Super Rotation System), which includes wallkicks that allow " +
+            "t-spin doubles, t-spin triples, and other complex movements. Scoring will also rewards these complex movements. " +
+            "I hope you have as much fun playing this game as I had developing it!",
+            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
+            anchoredPos: new Vector2(0f, AboutDescY),
+            size: new Vector2(AboutDescWidth, AboutDescHeight),
+            fontSize: AboutDescFontSize, color: new Color(1f, 0.97f, 0.95f, 0.92f), style: FontStyles.Normal,
+            alignment: TextAlignmentOptions.TopLeft);
+        desc.enableWordWrapping = true;
 
-            CreateLabel(p.transform, AboutFacts[i].key,
-                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
-                anchoredPos: new Vector2(AboutFactKeyX, y),
-                size: new Vector2(320f, AboutFactStep - 6f),
-                fontSize: 22f, color: new Color(1f, 1f, 1f, 0.6f), style: FontStyles.Bold,
-                alignment: TextAlignmentOptions.Right);
-
-            CreateLabel(p.transform, AboutFacts[i].value,
-                anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
-                anchoredPos: new Vector2(AboutFactValueX, y),
-                size: new Vector2(820f, AboutFactStep - 6f),
-                fontSize: 22f, color: new Color(1f, 0.95f, 0.95f), style: FontStyles.Normal,
-                alignment: TextAlignmentOptions.Left);
-        }
-
-        // Links section. Walk the four Inspector slots in the order we want
-        // them drawn and skip any whose handle is blank - that way clearing
-        // a handle in the Inspector removes the row cleanly without leaving
-        // a vertical gap where an empty slot used to sit.
-        SocialLink[] slots = { _emailLink, _instagramLink, _githubLink, _linkedinLink };
-        int drawn = 0;
-        bool headerDrawn = false;
-        for (int i = 0; i < slots.Length; i++)
-        {
-            SocialLink link = slots[i];
-            if (link == null || string.IsNullOrEmpty(link.handle)) continue;
-
-            // Header is deferred until we know at least one link will actually
-            // render, so an all-empty set doesn't leave an orphaned "LINKS"
-            // subheading floating above nothing.
-            if (!headerDrawn)
+        // ── Bottom-left: "Created by" ──
+        BuildCreditSection(p.transform,
+            sectionAnchor: new Vector2(0f, 1f),
+            header: "CREATED BY",
+            name:   "CAMERON REYNES",
+            alignment: TextAlignmentOptions.Left,
+            links: new[]
             {
-                CreateLabel(p.transform, "LINKS",
-                    anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0.5f, 1f),
-                    anchoredPos: new Vector2(AboutFactKeyX, AboutLinksHeaderY),
-                    size: new Vector2(320f, 36f),
-                    fontSize: 22f, color: new Color(1f, 1f, 1f, 0.45f), style: FontStyles.Bold,
-                    alignment: TextAlignmentOptions.Right);
-                headerDrawn = true;
-            }
+                new SocialLink { icon = SocialIcon.Email,     iconSprite = _iconEmail,
+                                 label = "EMAIL",     handle = "cameronr252@gmail.com", tint = TintEmail     },
+                new SocialLink { icon = SocialIcon.GitHub,    iconSprite = _iconGithub,
+                                 label = "GITHUB",    handle = "@camreynes",            tint = TintGithub    },
+                new SocialLink { icon = SocialIcon.Instagram, iconSprite = _iconInstagram,
+                                 label = "INSTAGRAM", handle = "@camreynes",            tint = TintInstagram },
+                new SocialLink { icon = SocialIcon.LinkedIn,  iconSprite = _iconLinkedin,
+                                 label = "LINKEDIN",  handle = "/camreynes",            tint = TintLinkedin  },
+            });
 
-            float y = AboutLinkStartY - drawn * AboutLinkStep;
-            BuildSocialLinkRow(p.transform, link, y);
-            drawn++;
-        }
-
-        // Footer line. Gated on non-empty so setting AboutFooter = "" hides
-        // it without ever creating a zero-width label.
-        if (!string.IsNullOrEmpty(AboutFooter))
-        {
-            CreateLabel(p.transform, AboutFooter,
-                anchor: new Vector2(0.5f, 0f), pivot: new Vector2(0.5f, 0f),
-                anchoredPos: new Vector2(0f, 45f), size: new Vector2(1150f, 50f),
-                fontSize: 24f, color: new Color(1f, 1f, 1f, 0.8f), style: FontStyles.Italic,
-                alignment: TextAlignmentOptions.Center);
-        }
+        // ── Bottom-right: "Special thanks" ──
+        BuildCreditSection(p.transform,
+            sectionAnchor: new Vector2(1f, 1f),
+            header: "SPECIAL THANKS TO",
+            name:   "GRANT HARVEY  •  MUSIC PRODUCTION",
+            alignment: TextAlignmentOptions.Right,
+            links: new[]
+            {
+                new SocialLink { icon = SocialIcon.Email,     iconSprite = _iconEmail,
+                                 label = "EMAIL",     handle = "grantharvey616@gmail.com", tint = TintEmail     },
+                new SocialLink { icon = SocialIcon.Instagram, iconSprite = _iconInstagram,
+                                 label = "INSTAGRAM", handle = "garnt.harvey",             tint = TintInstagram },
+            });
 
         return p;
     }
 
     /// <summary>
-    /// Lays out one row: [icon badge] [LABEL] [handle]. Row y is the row's
-    /// vertical center; icon and text all share that y line. Kept as its own
-    /// method so adding a new icon style only touches BuildSocialIcon.
+    /// Lays out one credit column inside the About panel. sectionAnchor
+    /// picks which corner the column hangs off — (0,1) for the bottom-left
+    /// "Created by" block (it's anchored TOP-left and grown downward via
+    /// negative Y), (1,1) for the bottom-right "Special thanks" block.
+    /// Header + name are drawn at the column's outer edge with the matching
+    /// alignment, and each row below renders [icon] [LABEL] [handle]
+    /// flowing left→right regardless of which side the column sits on, so
+    /// the eye scans both columns the same way.
     /// </summary>
-    private void BuildSocialLinkRow(Transform parent, SocialLink link, float y)
+    private void BuildCreditSection(Transform panel, Vector2 sectionAnchor,
+        string header, string name, TextAlignmentOptions alignment,
+        SocialLink[] links)
     {
-        // Icon badge. Anchored top, pivot center so anchoredPosition y=y puts
-        // the badge's center on the row's baseline.
-        GameObject iconRoot = BuildSocialIcon(parent, link, AboutIconSize);
-        RectTransform irt = (RectTransform)iconRoot.transform;
-        irt.anchorMin = new Vector2(0.5f, 1f);
-        irt.anchorMax = new Vector2(0.5f, 1f);
-        irt.pivot     = new Vector2(0.5f, 0.5f);
-        irt.anchoredPosition = new Vector2(AboutLinkIconX, y);
+        bool leftCol = sectionAnchor.x < 0.5f;
 
-        // Label (e.g. "INSTAGRAM"). Pivot(0,0.5) so anchoredPos is the
-        // left-middle - easier to reason about when the row is a horizontal
-        // strip of items sharing a y baseline.
-        CreateLabel(parent, link.label,
-            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0f, 0.5f),
-            anchoredPos: new Vector2(AboutLinkLabelX, y), size: new Vector2(260f, AboutLinkStep - 8f),
-            fontSize: 22f, color: link.tint, style: FontStyles.Bold,
+        // Strip width = total horizontal footprint of one row. The 14 and 10
+        // are the icon→label and label→handle gaps used in BuildCreditRow,
+        // duplicated here so the header / name boxes line up with the
+        // strip's outer edges. If you change the gaps in BuildCreditRow
+        // update them here too — keeping these numbers as named constants
+        // would be cleaner but the duplication is local enough that the
+        // grep cost is fine.
+        float stripW = AboutIconSize + 14f + AboutLabelWidth + 10f + AboutHandleWidth;
+
+        // For the LEFT column the strip starts at +inset (right of anchor).
+        // For the RIGHT column the strip's RIGHT edge is at -inset and it
+        // extends LEFTWARD by stripW, so its left edge sits at -inset-stripW.
+        // Once stripLeftX is settled the per-row layout is identical.
+        float stripLeftX = leftCol
+            ?  AboutSectionInsetX
+            : -AboutSectionInsetX - stripW;
+
+        // Header / name share the column's outer edge. Pivot matching the
+        // anchor means anchoredPos is the corner of the text box, no
+        // per-side fudge needed.
+        Vector2 textPivot = sectionAnchor;
+        float   textX     = leftCol ? AboutSectionInsetX : -AboutSectionInsetX;
+
+        CreateLabel(panel, header,
+            anchor: sectionAnchor, pivot: textPivot,
+            anchoredPos: new Vector2(textX, AboutSectionHeaderY),
+            size: new Vector2(stripW, 32f),
+            fontSize: AboutHeaderFontSize, color: new Color(1f, 1f, 1f, 0.55f), style: FontStyles.Bold,
+            alignment: alignment);
+
+        CreateLabel(panel, name,
+            anchor: sectionAnchor, pivot: textPivot,
+            anchoredPos: new Vector2(textX, AboutSectionNameY),
+            size: new Vector2(stripW, 40f),
+            fontSize: AboutNameFontSize, color: new Color(1f, 0.97f, 0.95f), style: FontStyles.Bold,
+            alignment: alignment);
+
+        for (int i = 0; i < links.Length; i++)
+        {
+            float rowY       = AboutCreditFirstY - i * AboutCreditStep;
+            float iconCenter = stripLeftX + AboutIconSize * 0.5f;
+            BuildCreditRow(panel, links[i], sectionAnchor, iconCenter, rowY);
+        }
+    }
+
+    /// <summary>
+    /// Builds one credit row [icon] [LABEL] [handle] anchored to rowAnchor
+    /// (the panel corner the column hangs off). iconCenterX is the icon's
+    /// center x in that anchor's local frame; the label and handle are laid
+    /// out to its right with fixed widths so the columns line up across
+    /// rows. Pivot (0, 0.5) on the text means anchoredPos pins the LEFT-
+    /// middle of each text box, which is the easiest thing to reason about
+    /// for a left-to-right strip — even on the right side of the panel
+    /// where x values are all negative, "label is to the right of icon"
+    /// still means labelX > iconCenterX.
+    /// </summary>
+    private void BuildCreditRow(Transform panel, SocialLink link,
+        Vector2 rowAnchor, float iconCenterX, float rowY)
+    {
+        GameObject icon = BuildSocialIcon(panel, link, AboutIconSize);
+        RectTransform irt = (RectTransform)icon.transform;
+        irt.anchorMin = irt.anchorMax = rowAnchor;
+        irt.pivot     = new Vector2(0.5f, 0.5f);
+        irt.anchoredPosition = new Vector2(iconCenterX, rowY);
+
+        // 14px gap from icon edge to label start. Earlier this was 10, but at
+        // the new 24pt row size some PNG logos (gmail/instagram) have a hair
+        // of internal padding and the label felt visually glued to them.
+        float labelX  = iconCenterX + AboutIconSize * 0.5f + 14f;
+        CreateLabel(panel, link.label,
+            anchor: rowAnchor, pivot: new Vector2(0f, 0.5f),
+            anchoredPos: new Vector2(labelX, rowY),
+            size: new Vector2(AboutLabelWidth, AboutIconSize),
+            fontSize: AboutRowFontSize, color: link.tint, style: FontStyles.Bold,
             alignment: TextAlignmentOptions.Left);
 
-        // Handle / URL text - dimmer than the label so the eye lands on the
-        // platform name first.
-        CreateLabel(parent, link.handle,
-            anchor: new Vector2(0.5f, 1f), pivot: new Vector2(0f, 0.5f),
-            anchoredPos: new Vector2(AboutLinkHandleX, y), size: new Vector2(760f, AboutLinkStep - 8f),
-            fontSize: 22f, color: new Color(1f, 0.95f, 0.95f, 0.85f), style: FontStyles.Normal,
+        // 10px gap between label box and handle box. The label box is wide
+        // enough that "INSTAGRAM" (the longest label we render) finishes
+        // well before the box ends, so a real visual gap shows up here even
+        // though the boxes themselves are nearly touching.
+        float handleX = labelX + AboutLabelWidth + 10f;
+        CreateLabel(panel, link.handle,
+            anchor: rowAnchor, pivot: new Vector2(0f, 0.5f),
+            anchoredPos: new Vector2(handleX, rowY),
+            size: new Vector2(AboutHandleWidth, AboutIconSize),
+            fontSize: AboutRowFontSize, color: new Color(1f, 0.95f, 0.95f, 0.9f),
+            style: FontStyles.Normal,
             alignment: TextAlignmentOptions.Left);
     }
 
     /// <summary>
     /// Builds the badge sitting at the start of a link row. Two rendering
     /// modes, chosen at runtime based on what's in the slot:
-    ///   • Inspector sprite mode: if `link.iconSprite` is set we just show
-    ///     that image filling the slot with aspect preserved, tinted by
-    ///     `link.tint`. No brand badge background - the artwork is expected
-    ///     to carry itself, and a logo on a colored square usually looks
-    ///     cluttered.
+    ///   • Sprite mode (the common case): if `link.iconSprite` is non-null
+    ///     — i.e. Resources.Load picked up the PNG from
+    ///     Assets/Menu/Resources/SocialIcons/ — we render it filling the
+    ///     slot with aspect preserved. We pass the iconSprite through with
+    ///     a white tint instead of `link.tint`; the gmail / instagram /
+    ///     etc. PNGs are full-color logos and a colored multiply would
+    ///     muddy them. The `link.tint` field still drives the LABEL text.
     ///   • Procedural fallback: brand-tinted rounded square + first letter
-    ///     of the label in bold white. This keeps the menu looking right
-    ///     before any PNGs get dropped in, and Instagram gets a small
+    ///     of the label in bold white. Kicks in if a PNG fails to load
+    ///     (folder moved, importer mode changed); Instagram gets a small
     ///     camera-lens motif as a nostalgic holdover from the no-emoji era.
     /// </summary>
     private GameObject BuildSocialIcon(Transform parent, SocialLink link, float size)
@@ -1452,10 +1525,11 @@ public class MainMenu : MonoBehaviour
         rr.pivot     = new Vector2(0.5f, 0.5f);
         rr.sizeDelta = new Vector2(size, size);
 
-        // Inspector-assigned sprite wins. preserveAspect keeps non-square
-        // artwork from getting stretched, and the tint multiplies - so a
-        // white-on-transparent monochrome icon can be tinted from the
-        // Inspector, while full-color logos should leave tint at white.
+        // Loaded sprite wins. preserveAspect keeps non-square artwork from
+        // getting stretched. We render at full white because the PNGs we
+        // ship are full-color brand logos — multiplying them by the
+        // platform's accent tint would dim and shift the colors in a way
+        // that reads as "broken" rather than themed.
         if (link.iconSprite != null)
         {
             GameObject sg = new GameObject("sprite");
@@ -1463,7 +1537,7 @@ public class MainMenu : MonoBehaviour
             Image simg = sg.AddComponent<Image>();
             simg.sprite         = link.iconSprite;
             simg.preserveAspect = true;
-            simg.color          = link.tint;
+            simg.color          = Color.white;
             simg.raycastTarget  = false;
             RectTransform srt = sg.GetComponent<RectTransform>();
             srt.anchorMin = Vector2.zero;
@@ -1656,7 +1730,7 @@ public class MainMenu : MonoBehaviour
         return _gridSpriteCached;
     }
 
-    // ── Misc helpers ─────────────────────────────────────────────────────────
+    // ── Misc helpers ──────────────────────────────────────────────────────────────────────
 
     private static void StretchFull(RectTransform rt)
     {
